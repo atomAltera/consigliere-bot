@@ -25,7 +25,6 @@ func main() {
 
 	logger.Info("config loaded",
 		"db_path", cfg.DBPath,
-		"group_id", cfg.GroupID,
 	)
 
 	// Initialize database
@@ -49,7 +48,7 @@ func main() {
 	pollService := poll.NewService(pollRepo, voteRepo)
 
 	// Create and start bot
-	b, err := bot.New(cfg.TelegramToken, cfg.GroupID, pollService, logger)
+	b, err := bot.New(cfg.TelegramToken, pollService, logger)
 	if err != nil {
 		log.Fatalf("Failed to create bot: %v", err)
 	}

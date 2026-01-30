@@ -21,6 +21,7 @@ vendor/
 # IDE and editor files
 .idea/
 .vscode/
+.zed/debug.json
 *.swp
 *.swo
 *~
@@ -44,3 +45,5 @@ Thumbs.db
 # Debug files
 debug
 *.log
+
+/data

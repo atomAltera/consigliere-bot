@@ -11,12 +11,11 @@ import (
 
 type Bot struct {
 	bot         *tele.Bot
-	groupID     int64
 	pollService *poll.Service
 	logger      *slog.Logger
 }
 
-func New(token string, groupID int64, pollService *poll.Service, logger *slog.Logger) (*Bot, error) {
+func New(token string, pollService *poll.Service, logger *slog.Logger) (*Bot, error) {
 	pref := tele.Settings{
 		Token:  token,
 		Poller: &tele.LongPoller{Timeout: 10 * time.Second},
@@ -29,7 +28,6 @@ func New(token string, groupID int64, pollService *poll.Service, logger *slog.Lo
 
 	return &Bot{
 		bot:         b,
-		groupID:     groupID,
 		pollService: pollService,
 		logger:      logger,
 	}, nil
@@ -48,10 +46,10 @@ func (b *Bot) Bot() *tele.Bot {
 	return b.bot
 }
 
-func (b *Bot) GroupID() int64 {
-	return b.groupID
-}
-
 func (b *Bot) PollService() *poll.Service {
 	return b.pollService
+}
+
+func (b *Bot) Logger() *slog.Logger {
+	return b.logger
 }
