@@ -93,6 +93,7 @@ func (b *Bot) RegisterCommands() {
 	adminGroup.Handle("/pin", b.handlePin)
 	adminGroup.Handle("/cancel", b.handleCancel)
 	adminGroup.Handle("/vote", b.handleVote)
+	adminGroup.Handle("/help", b.handleHelp)
 }
 
 // handlePoll creates a new poll for the specified date
@@ -404,5 +405,17 @@ func (b *Bot) handleVote(c tele.Context) error {
 	}
 
 	_, err = b.SendTemporary(c.Chat(), fmt.Sprintf("Recorded vote for @%s: %s", username, poll.OptionKind(optionIndex).Label()), 0)
+	return err
+}
+
+// handleHelp shows the help message with all available commands
+func (b *Bot) handleHelp(c tele.Context) error {
+	b.logger.Info("command /help",
+		"user_id", c.Sender().ID,
+		"username", c.Sender().Username,
+		"chat_id", c.Chat().ID,
+	)
+
+	_, err := b.SendTemporary(c.Chat(), HelpMessage(), 30*time.Second, tele.ModeHTML)
 	return err
 }
