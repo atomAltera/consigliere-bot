@@ -34,10 +34,17 @@ func (b *Bot) handlePoll(c tele.Context) error {
 		return c.Send("Invalid date format. Use YYYY-MM-DD")
 	}
 
+	b.logger.Info("command /poll",
+		"user_id", c.Sender().ID,
+		"username", c.Sender().Username,
+		"chat_id", c.Chat().ID,
+		"event_date", eventDate.Format("2006-01-02"),
+	)
+
 	// Create poll in database
 	p, err := b.pollService.CreatePoll(c.Chat().ID, eventDate)
 	if err != nil {
-		return c.Send(fmt.Sprintf("Error creating poll: %v", err))
+		return c.Send("Failed to create poll. Please try again.")
 	}
 
 	// Create Telegram poll
@@ -70,9 +77,15 @@ func (b *Bot) handlePoll(c tele.Context) error {
 
 // handleResults posts the results message for the latest active poll
 func (b *Bot) handleResults(c tele.Context) error {
+	b.logger.Info("command /results",
+		"user_id", c.Sender().ID,
+		"username", c.Sender().Username,
+		"chat_id", c.Chat().ID,
+	)
+
 	// Get latest active poll
 	p, err := b.pollService.GetLatestActivePoll(c.Chat().ID)
-	if err != nil {
+	if err != nil || p == nil {
 		return c.Send("No active poll found")
 	}
 
@@ -109,9 +122,15 @@ func (b *Bot) handleResults(c tele.Context) error {
 
 // handlePin pins the poll message
 func (b *Bot) handlePin(c tele.Context) error {
+	b.logger.Info("command /pin",
+		"user_id", c.Sender().ID,
+		"username", c.Sender().Username,
+		"chat_id", c.Chat().ID,
+	)
+
 	// Get latest active poll
 	p, err := b.pollService.GetLatestActivePoll(c.Chat().ID)
-	if err != nil {
+	if err != nil || p == nil {
 		return c.Send("No active poll found")
 	}
 
@@ -142,9 +161,15 @@ func (b *Bot) handlePin(c tele.Context) error {
 
 // handleCancel cancels the event and deletes the results message
 func (b *Bot) handleCancel(c tele.Context) error {
+	b.logger.Info("command /cancel",
+		"user_id", c.Sender().ID,
+		"username", c.Sender().Username,
+		"chat_id", c.Chat().ID,
+	)
+
 	// Get latest active poll
 	p, err := b.pollService.GetLatestActivePoll(c.Chat().ID)
-	if err != nil {
+	if err != nil || p == nil {
 		return c.Send("No active poll found")
 	}
 
@@ -157,7 +182,7 @@ func (b *Bot) handleCancel(c tele.Context) error {
 			},
 		}
 		if err := c.Bot().Delete(msg); err != nil {
-			// Log but continue - message might already be deleted
+			b.logger.Warn("failed to delete results message", "error", err)
 		}
 	}
 

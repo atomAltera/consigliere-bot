@@ -1,7 +1,7 @@
 package bot
 
 import (
-	"log"
+	"log/slog"
 	"time"
 
 	tele "gopkg.in/telebot.v4"
@@ -13,9 +13,10 @@ type Bot struct {
 	bot         *tele.Bot
 	groupID     int64
 	pollService *poll.Service
+	logger      *slog.Logger
 }
 
-func New(token string, groupID int64, pollService *poll.Service) (*Bot, error) {
+func New(token string, groupID int64, pollService *poll.Service, logger *slog.Logger) (*Bot, error) {
 	pref := tele.Settings{
 		Token:  token,
 		Poller: &tele.LongPoller{Timeout: 10 * time.Second},
@@ -30,11 +31,12 @@ func New(token string, groupID int64, pollService *poll.Service) (*Bot, error) {
 		bot:         b,
 		groupID:     groupID,
 		pollService: pollService,
+		logger:      logger,
 	}, nil
 }
 
 func (b *Bot) Start() {
-	log.Println("Bot started")
+	b.logger.Info("bot started")
 	b.bot.Start()
 }
 

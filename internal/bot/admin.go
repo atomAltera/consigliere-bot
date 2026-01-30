@@ -36,7 +36,11 @@ func (b *Bot) DeleteCommand() tele.MiddlewareFunc {
 		return func(c tele.Context) error {
 			// Delete the command message
 			if err := c.Delete(); err != nil {
-				// Log but don't fail - bot might lack delete permission
+				b.logger.Warn("failed to delete command message",
+					"error", err,
+					"chat_id", c.Chat().ID,
+					"message_id", c.Message().ID,
+				)
 			}
 
 			return next(c)

@@ -2,6 +2,8 @@ package main
 
 import (
 	"log"
+	"log/slog"
+	"os"
 
 	"nuclight.org/consigliere/internal/bot"
 	"nuclight.org/consigliere/internal/config"
@@ -10,11 +12,21 @@ import (
 )
 
 func main() {
+	// Set up structured logger
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}))
+
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
+
+	logger.Info("config loaded",
+		"db_path", cfg.DBPath,
+		"group_id", cfg.GroupID,
+	)
 
 	// Initialize database
 	db, err := storage.NewDB(cfg.DBPath)
@@ -27,6 +39,8 @@ func main() {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}
 
+	logger.Info("database initialized")
+
 	// Create repositories
 	pollRepo := storage.NewPollRepository(db)
 	voteRepo := storage.NewVoteRepository(db)
@@ -35,7 +49,7 @@ func main() {
 	pollService := poll.NewService(pollRepo, voteRepo)
 
 	// Create and start bot
-	b, err := bot.New(cfg.TelegramToken, cfg.GroupID, pollService)
+	b, err := bot.New(cfg.TelegramToken, cfg.GroupID, pollService, logger)
 	if err != nil {
 		log.Fatalf("Failed to create bot: %v", err)
 	}
@@ -43,6 +57,5 @@ func main() {
 	b.RegisterCommands()
 	b.RegisterHandlers()
 
-	log.Println("Starting bot...")
 	b.Start()
 }

@@ -1,6 +1,8 @@
 package bot
 
 import (
+	"fmt"
+
 	tele "gopkg.in/telebot.v4"
 
 	"nuclight.org/consigliere/internal/poll"
@@ -36,28 +38,41 @@ func (b *Bot) handlePollAnswer(c tele.Context) error {
 		TgFirstName:   answer.Sender.FirstName,
 		TgOptionIndex: optionIndex,
 	}
+
+	optionLabel := "retracted"
+	if optionIndex >= 0 {
+		optionLabel = poll.OptionKind(optionIndex).Label()
+	}
+
+	b.logger.Info("vote recorded",
+		"user_id", answer.Sender.ID,
+		"username", answer.Sender.Username,
+		"poll_id", p.ID,
+		"option", optionLabel,
+	)
+
 	if err := b.pollService.RecordVote(v); err != nil {
-		return err
+		return fmt.Errorf("record vote: %w", err)
 	}
 
 	// Update results message if exists
 	if p.TgResultsMessageID != 0 {
 		results, err := b.pollService.GetResults(p.ID)
 		if err != nil {
-			return err
+			return fmt.Errorf("get results: %w", err)
 		}
 		results.Poll = p
 
 		html, err := poll.RenderResults(results)
 		if err != nil {
-			return err
+			return fmt.Errorf("render results: %w", err)
 		}
 
 		chat := &tele.Chat{ID: p.TgChatID}
 		msg := &tele.Message{ID: p.TgResultsMessageID, Chat: chat}
-		_, err = b.bot.Edit(msg, html, tele.ModeHTML)
-		if err != nil {
-			// Log but don't fail
+		if _, err = b.bot.Edit(msg, html, tele.ModeHTML); err != nil {
+			// Non-critical: message may have been deleted, just log
+			b.logger.Warn("failed to update results message", "error", err)
 		}
 	}
 
