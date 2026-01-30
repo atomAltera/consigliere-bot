@@ -304,11 +304,17 @@ func (b *Bot) handleCancel(c tele.Context) error {
 
 	// Send cancellation message
 	cancellationMsg := fmt.Sprintf(
-		"Event on %s has been cancelled",
+		"⚠️ Event on %s has been cancelled",
 		p.EventDate.Format("Monday, January 2"),
 	)
-	if _, err := c.Bot().Send(c.Chat(), cancellationMsg); err != nil {
+	sentMsg, err := c.Bot().Send(c.Chat(), cancellationMsg)
+	if err != nil {
 		return WrapUserError("Failed to send cancellation message. Please try again.", err)
+	}
+
+	// Pin the cancellation message (without Silent option to notify all members)
+	if err := c.Bot().Pin(sentMsg); err != nil {
+		b.logger.Warn("failed to pin cancellation message", "error", err)
 	}
 
 	// Update poll status - mark as inactive
@@ -397,5 +403,6 @@ func (b *Bot) handleVote(c tele.Context) error {
 		}
 	}
 
-	return c.Send(fmt.Sprintf("Recorded vote for @%s: %s", username, poll.OptionKind(optionIndex).Label()))
+	_, err = b.SendTemporary(c.Chat(), fmt.Sprintf("Recorded vote for @%s: %s", username, poll.OptionKind(optionIndex).Label()), 0)
+	return err
 }

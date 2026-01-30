@@ -1,6 +1,8 @@
 package bot
 
 import (
+	"time"
+
 	tele "gopkg.in/telebot.v4"
 )
 
@@ -50,8 +52,9 @@ func (b *Bot) DeleteCommand() tele.MiddlewareFunc {
 
 // HandleErrors is a middleware that properly handles errors from command handlers.
 // It logs internal errors and sends appropriate messages to users:
-// - UserError: sends the user-friendly message, logs if there's an underlying cause
-// - Other errors: sends a generic error message, logs the full error
+// - UserError: sends the user-friendly message (temporarily), logs if there's an underlying cause
+// - Other errors: sends a generic error message (temporarily), logs the full error
+// Error messages are automatically deleted after DefaultTempMessageDelay.
 func (b *Bot) HandleErrors() tele.MiddlewareFunc {
 	return func(next tele.HandlerFunc) tele.HandlerFunc {
 		return func(c tele.Context) error {
@@ -70,13 +73,26 @@ func (b *Bot) HandleErrors() tele.MiddlewareFunc {
 				)
 			}
 
-			// Send user-friendly message
+			// Send user-friendly message (temporary)
 			userMsg := GetUserMessage(err)
-			if sendErr := c.Send(userMsg); sendErr != nil {
+			msg, sendErr := b.bot.Send(c.Chat(), userMsg)
+			if sendErr != nil {
 				b.logger.Error("failed to send error message to user",
 					"error", sendErr,
 					"original_error", err,
 				)
+			} else {
+				// Delete the error message after a delay
+				go func() {
+					time.Sleep(DefaultTempMessageDelay)
+					if delErr := b.bot.Delete(msg); delErr != nil {
+						b.logger.Warn("failed to delete temporary error message",
+							"error", delErr,
+							"chat_id", msg.Chat.ID,
+							"message_id", msg.ID,
+						)
+					}
+				}()
 			}
 
 			// Return nil to prevent telebot from handling the error again
