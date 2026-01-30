@@ -19,7 +19,7 @@ func (m *mockPollRepo) Create(p *Poll) error {
 
 func (m *mockPollRepo) GetLatestActive(chatID int64) (*Poll, error) {
 	for _, p := range m.polls {
-		if p.TgChatID == chatID && p.Status == StatusActive {
+		if p.TgChatID == chatID && p.IsActive {
 			return p, nil
 		}
 	}
@@ -78,8 +78,8 @@ func TestService_CreatePoll(t *testing.T) {
 	if p.ID == 0 {
 		t.Error("expected poll to have ID")
 	}
-	if p.Status != StatusActive {
-		t.Errorf("expected status active, got %s", p.Status)
+	if !p.IsActive {
+		t.Error("expected poll to be active")
 	}
 }
 

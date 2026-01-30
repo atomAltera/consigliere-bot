@@ -62,6 +62,10 @@ func (b *Bot) handlePollAnswer(c tele.Context) error {
 			return fmt.Errorf("get results: %w", err)
 		}
 		results.Poll = p
+		results.Title, err = poll.RenderTitle(p.EventDate)
+		if err != nil {
+			return fmt.Errorf("render title: %w", err)
+		}
 
 		html, err := poll.RenderResults(results)
 		if err != nil {

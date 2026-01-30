@@ -18,7 +18,7 @@ func TestVoteRepository_RecordAndGetCurrent(t *testing.T) {
 	p := &poll.Poll{
 		TgChatID:  -123456,
 		EventDate: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC),
-		Status:    poll.StatusActive,
+		IsActive:  true,
 	}
 	pollRepo.Create(p)
 
@@ -59,7 +59,7 @@ func TestVoteRepository_LatestVoteWins(t *testing.T) {
 	p := &poll.Poll{
 		TgChatID:  -123456,
 		EventDate: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC),
-		Status:    poll.StatusActive,
+		IsActive:  true,
 	}
 	pollRepo.Create(p)
 

@@ -47,3 +47,40 @@ func (b *Bot) DeleteCommand() tele.MiddlewareFunc {
 		}
 	}
 }
+
+// HandleErrors is a middleware that properly handles errors from command handlers.
+// It logs internal errors and sends appropriate messages to users:
+// - UserError: sends the user-friendly message, logs if there's an underlying cause
+// - Other errors: sends a generic error message, logs the full error
+func (b *Bot) HandleErrors() tele.MiddlewareFunc {
+	return func(next tele.HandlerFunc) tele.HandlerFunc {
+		return func(c tele.Context) error {
+			err := next(c)
+			if err == nil {
+				return nil
+			}
+
+			// Log the error if needed
+			if ShouldLog(err) {
+				b.logger.Error("command error",
+					"error", GetLogError(err),
+					"chat_id", c.Chat().ID,
+					"user_id", c.Sender().ID,
+					"command", c.Text(),
+				)
+			}
+
+			// Send user-friendly message
+			userMsg := GetUserMessage(err)
+			if sendErr := c.Send(userMsg); sendErr != nil {
+				b.logger.Error("failed to send error message to user",
+					"error", sendErr,
+					"original_error", err,
+				)
+			}
+
+			// Return nil to prevent telebot from handling the error again
+			return nil
+		}
+	}
+}

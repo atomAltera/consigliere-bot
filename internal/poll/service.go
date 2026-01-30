@@ -27,7 +27,8 @@ func (s *Service) CreatePoll(chatID int64, eventDate time.Time) (*Poll, error) {
 	p := &Poll{
 		TgChatID:  chatID,
 		EventDate: eventDate,
-		Status:    StatusActive,
+		IsActive:  true,
+		IsPinned:  false,
 		CreatedAt: time.Now(),
 	}
 	if err := s.polls.Create(p); err != nil {
@@ -54,6 +55,7 @@ func (s *Service) RecordVote(v *Vote) error {
 
 type Results struct {
 	Poll           *Poll
+	Title          string
 	TimeSlots      []TimeSlot
 	Undecided      []*Vote
 	NotComing      []*Vote

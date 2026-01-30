@@ -1,6 +1,9 @@
 package poll
 
-import "time"
+import (
+	"hash/fnv"
+	"time"
+)
 
 type Vote struct {
 	ID            int64
@@ -9,7 +12,17 @@ type Vote struct {
 	TgUsername    string
 	TgFirstName   string
 	TgOptionIndex int
+	IsManual      bool
 	VotedAt       time.Time
+}
+
+// ManualUserID generates a synthetic user ID for manual votes based on username.
+// Uses negative IDs to avoid collision with real Telegram user IDs (which are positive).
+func ManualUserID(username string) int64 {
+	h := fnv.New64a()
+	h.Write([]byte(username))
+	// Make it negative to distinguish from real user IDs
+	return -int64(h.Sum64() & 0x7FFFFFFFFFFFFFFF)
 }
 
 func (v *Vote) OptionKind() OptionKind {
