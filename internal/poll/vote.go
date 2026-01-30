@@ -31,6 +31,11 @@ func (v *Vote) OptionKind() OptionKind {
 
 func (v *Vote) DisplayName() string {
 	if v.TgUsername != "" {
+		// Manual votes store the provided name in TgUsername,
+		// which might be a real name (not a Telegram handle), so don't add @
+		if v.IsManual {
+			return v.TgUsername
+		}
 		return "@" + v.TgUsername
 	}
 	return v.TgFirstName

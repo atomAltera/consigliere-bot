@@ -404,7 +404,7 @@ func (b *Bot) handleVote(c tele.Context) error {
 		}
 	}
 
-	_, err = b.SendTemporary(c.Chat(), fmt.Sprintf("Recorded vote for @%s: %s", username, poll.OptionKind(optionIndex).Label()), 0)
+	_, err = b.SendTemporary(c.Chat(), fmt.Sprintf("Recorded vote for %s: %s", username, poll.OptionKind(optionIndex).Label()), 0)
 	return err
 }
 
