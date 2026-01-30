@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(superpowers:brainstorming)",
+      "Bash(git -C /Users/altera/projects/mafia/consigliere-bot log --oneline -5)",
+      "mcp__gopls__go_workspace",
+      "Bash(git add:*)"
+    ]
+  }
+}
