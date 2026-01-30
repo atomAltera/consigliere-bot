@@ -1,0 +1,22 @@
+🎲 <b>Mafia Night — {{.Poll.EventDate.Format "Monday, Jan 2"}}</b>
+
+✅ <b>Coming ({{.AttendingCount}}):</b>
+{{- range .TimeSlots}}
+{{- if .Voters}}
+  {{.Label}}: {{range $i, $v := .Voters}}{{if $i}}, {{end}}{{$v.DisplayName}}{{end}}
+{{- end}}
+{{- end}}
+
+🤔 <b>Undecided ({{len .Undecided}}):</b>
+{{- if .Undecided}}
+  {{range $i, $v := .Undecided}}{{if $i}}, {{end}}{{$v.DisplayName}}{{end}}
+{{- else}}
+  —
+{{- end}}
+
+❌ <b>Not coming ({{len .NotComing}}):</b>
+{{- if .NotComing}}
+  {{range $i, $v := .NotComing}}{{if $i}}, {{end}}{{$v.DisplayName}}{{end}}
+{{- else}}
+  —
+{{- end}}
