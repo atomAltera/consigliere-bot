@@ -7,11 +7,12 @@ import (
 	"time"
 )
 
-//go:embed templates/*.html
+//go:embed templates/*
 var templates embed.FS
 
 var resultsTmpl *template.Template
 var invitationTmpl *template.Template
+var pollTitleTmpl *template.Template
 
 // Russian weekday names
 var russianWeekdays = []string{
@@ -75,6 +76,10 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+	pollTitleTmpl, err = template.New("poll_title.txt").Funcs(templateFuncs).ParseFS(templates, "templates/poll_title.txt")
+	if err != nil {
+		panic(err)
+	}
 }
 
 func RenderResults(results *Results) (string, error) {
@@ -86,9 +91,12 @@ func RenderResults(results *Results) (string, error) {
 }
 
 // RenderTitle renders the poll title for the given event date.
-// Returns a simple formatted title like "🎭 Мафия: понедельник, 15 января"
 func RenderTitle(eventDate time.Time) (string, error) {
-	return "🎭 Мафия: " + formatDateRussian(eventDate), nil
+	var buf bytes.Buffer
+	if err := pollTitleTmpl.Execute(&buf, eventDate); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
 }
 
 // RenderInvitation renders the invitation message for the given results.
