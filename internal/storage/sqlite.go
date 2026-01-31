@@ -72,19 +72,12 @@ func (d *DB) Migrate() error {
 	// Migration: Add is_manual column to votes if it doesn't exist
 	d.db.Exec(`ALTER TABLE votes ADD COLUMN is_manual INTEGER NOT NULL DEFAULT 0`)
 
-	// Migration: Add is_active and is_pinned columns to polls, migrate from status, drop status
-	// Step 1: Add new columns
+	// Migration: Add is_active and is_pinned columns to polls
 	d.db.Exec(`ALTER TABLE polls ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1`)
 	d.db.Exec(`ALTER TABLE polls ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0`)
 
-	// Step 2: Migrate data from status column if it exists
-	// is_active = 1 for 'active' and 'pinned', 0 for 'cancelled'
-	// is_pinned = 1 for 'pinned', 0 otherwise
-	d.db.Exec(`UPDATE polls SET is_active = CASE WHEN status IN ('active', 'pinned') THEN 1 ELSE 0 END WHERE is_active = 1 AND status IS NOT NULL`)
-	d.db.Exec(`UPDATE polls SET is_pinned = CASE WHEN status = 'pinned' THEN 1 ELSE 0 END WHERE is_pinned = 0 AND status IS NOT NULL`)
-
-	// Note: SQLite doesn't support DROP COLUMN in older versions.
-	// The status column will be left in place but ignored.
+	// Migration: Drop legacy status column if it exists (SQLite 3.35.0+ supports DROP COLUMN)
+	d.db.Exec(`ALTER TABLE polls DROP COLUMN status`)
 
 	return nil
 }
