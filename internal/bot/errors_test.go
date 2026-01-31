@@ -78,7 +78,7 @@ func TestGetUserMessage(t *testing.T) {
 	t.Run("with regular error", func(t *testing.T) {
 		err := errors.New("database error")
 		msg := GetUserMessage(err)
-		if msg != "An internal error occurred. Please try again later." {
+		if msg != MsgInternalError {
 			t.Errorf("expected generic message, got '%s'", msg)
 		}
 	})

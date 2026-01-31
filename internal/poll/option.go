@@ -12,16 +12,16 @@ const (
 )
 
 var optionLabels = []string{
-	"Will come at 19:00",
-	"Will come at 20:00",
-	"Will come at 21:00 or later",
-	"Will decide later",
-	"Will not come",
+	"Приду к 19:00",
+	"Приду к 20:00",
+	"Приду к 21:00 или позже",
+	"Решу позже",
+	"Не приду",
 }
 
 func (o OptionKind) Label() string {
 	if o < 0 || int(o) >= len(optionLabels) {
-		return "Unknown"
+		return "Неизвестно"
 	}
 	return optionLabels[o]
 }

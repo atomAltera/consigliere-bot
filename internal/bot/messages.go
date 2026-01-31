@@ -2,35 +2,35 @@ package bot
 
 // User error messages (user mistakes, shown directly)
 const (
-	MsgInvalidDateFormat  = "Invalid date format. Use day name (e.g., monday, sat) or YYYY-MM-DD"
-	MsgPollAlreadyExists  = "There is already an active poll in this chat. Cancel it first with /cancel before creating a new one."
-	MsgNoActivePoll       = "No active poll found"
-	MsgPollMessageMissing = "Poll message not found"
-	MsgInvalidUsername    = "Invalid username"
-	MsgVoteUsage          = "Usage: /vote @username <option 1-5>\nOptions: 1=19:00, 2=20:00, 3=21:00+, 4=decide later, 5=not coming"
-	MsgInvalidVoteOption  = "Invalid option. Use 1-5:\n1=19:00, 2=20:00, 3=21:00+, 4=decide later, 5=not coming"
+	MsgInvalidDateFormat  = "Неверный формат даты. Используйте название дня (например, понедельник, сб) или ГГГГ-ММ-ДД"
+	MsgPollAlreadyExists  = "В этом чате уже есть активный опрос. Сначала отмените его командой /cancel"
+	MsgNoActivePoll       = "Активный опрос не найден"
+	MsgPollMessageMissing = "Сообщение с опросом не найдено"
+	MsgInvalidUsername    = "Неверное имя пользователя"
+	MsgVoteUsage          = "Использование: /vote @имя <опция 1-5>\nОпции: 1=19:00, 2=20:00, 3=21:00+, 4=решу позже, 5=не приду"
+	MsgInvalidVoteOption  = "Неверная опция. Используйте 1-5:\n1=19:00, 2=20:00, 3=21:00+, 4=решу позже, 5=не приду"
 )
 
 // System error messages (internal errors, hide details from user)
 const (
-	MsgInternalError            = "An internal error occurred. Please try again later."
-	MsgFailedCreatePoll         = "Failed to create poll. Please try again."
-	MsgFailedRenderPollTitle    = "Failed to render poll title. Please try again."
-	MsgFailedSendPoll           = "Failed to send poll. Please try again."
-	MsgFailedSavePoll           = "Failed to save poll. Please try again."
-	MsgFailedGetResults         = "Failed to get results. Please try again."
-	MsgFailedRenderTitle        = "Failed to render title. Please try again."
-	MsgFailedRenderResults      = "Failed to render results. Please try again."
-	MsgFailedSendResults        = "Failed to send results. Please try again."
-	MsgFailedSaveResults        = "Failed to save results. Please try again."
-	MsgFailedPinPoll            = "Failed to pin poll. Please try again."
-	MsgFailedSavePollStatus     = "Failed to save poll status. Please try again."
-	MsgFailedSendCancellation   = "Failed to send cancellation message. Please try again."
-	MsgFailedRecordVote         = "Failed to record vote. Please try again."
+	MsgInternalError          = "Произошла внутренняя ошибка. Попробуйте позже."
+	MsgFailedCreatePoll       = "Не удалось создать опрос. Попробуйте ещё раз."
+	MsgFailedRenderPollTitle  = "Не удалось сформировать заголовок опроса. Попробуйте ещё раз."
+	MsgFailedSendPoll         = "Не удалось отправить опрос. Попробуйте ещё раз."
+	MsgFailedSavePoll         = "Не удалось сохранить опрос. Попробуйте ещё раз."
+	MsgFailedGetResults       = "Не удалось получить результаты. Попробуйте ещё раз."
+	MsgFailedRenderTitle      = "Не удалось сформировать заголовок. Попробуйте ещё раз."
+	MsgFailedRenderResults    = "Не удалось сформировать результаты. Попробуйте ещё раз."
+	MsgFailedSendResults      = "Не удалось отправить результаты. Попробуйте ещё раз."
+	MsgFailedSaveResults      = "Не удалось сохранить результаты. Попробуйте ещё раз."
+	MsgFailedPinPoll          = "Не удалось закрепить опрос. Попробуйте ещё раз."
+	MsgFailedSavePollStatus   = "Не удалось сохранить статус опроса. Попробуйте ещё раз."
+	MsgFailedSendCancellation = "Не удалось отправить сообщение об отмене. Попробуйте ещё раз."
+	MsgFailedRecordVote       = "Не удалось записать голос. Попробуйте ещё раз."
 )
 
 // Format strings for dynamic messages
 const (
-	MsgFmtEventCancelled = "⚠️ Event on %s has been cancelled"
-	MsgFmtVoteRecorded   = "Recorded vote for %s: %s"
+	MsgFmtEventCancelled = "⚠️ Игра %s отменена"
+	MsgFmtVoteRecorded   = "Записан голос за %s: %s"
 )

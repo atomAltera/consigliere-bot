@@ -29,3 +29,4 @@ go run ./cmd/consigliere                          # Run directly
 - Commands: `/poll <day>`, `/results`, `/cancel`, `/pin`
 - Results message auto-updates when votes change
 - Minimum 11 participants required; cancel event if not met by 5pm
+- commit after each change

@@ -1,17 +1,17 @@
 <b>{{.Title}}</b>
 
-✅ <b>Coming ({{.AttendingCount}}):</b>
+✅ <b>Придут ({{.AttendingCount}}):</b>
 {{- range .TimeSlots}}
 {{- if .Voters}}
   {{.Label}}: {{range $i, $v := .Voters}}{{if $i}}, {{end}}{{$v.DisplayName}}{{end}}
 {{- end}}
 {{- end}}
 
-🤔 <b>Undecided ({{len .Undecided}}):</b>
+🤔 <b>Не определились ({{len .Undecided}}):</b>
 {{- if .Undecided}}
   {{range $i, $v := .Undecided}}{{if $i}}, {{end}}{{$v.DisplayName}}{{end}}
 {{- else}}
   —
 {{- end}}
 
-❌ <b>Not coming:</b> {{len .NotComing}}
+❌ <b>Не придут:</b> {{len .NotComing}}

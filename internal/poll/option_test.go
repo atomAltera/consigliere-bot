@@ -7,11 +7,11 @@ func TestOptionKind_Label(t *testing.T) {
 		opt  OptionKind
 		want string
 	}{
-		{OptionComeAt19, "Will come at 19:00"},
-		{OptionComeAt20, "Will come at 20:00"},
-		{OptionComeAt21OrLater, "Will come at 21:00 or later"},
-		{OptionDecideLater, "Will decide later"},
-		{OptionNotComing, "Will not come"},
+		{OptionComeAt19, "Приду к 19:00"},
+		{OptionComeAt20, "Приду к 20:00"},
+		{OptionComeAt21OrLater, "Приду к 21:00 или позже"},
+		{OptionDecideLater, "Решу позже"},
+		{OptionNotComing, "Не приду"},
 	}
 	for _, tt := range tests {
 		if got := tt.opt.Label(); got != tt.want {
@@ -41,7 +41,7 @@ func TestAllOptions(t *testing.T) {
 	if len(opts) != 5 {
 		t.Errorf("AllOptions() returned %d options, want 5", len(opts))
 	}
-	if opts[0] != "Will come at 19:00" {
-		t.Errorf("AllOptions()[0] = %q, want %q", opts[0], "Will come at 19:00")
+	if opts[0] != "Приду к 19:00" {
+		t.Errorf("AllOptions()[0] = %q, want %q", opts[0], "Приду к 19:00")
 	}
 }

@@ -28,7 +28,7 @@ func TestRenderResults(t *testing.T) {
 		t.Fatalf("RenderResults failed: %v", err)
 	}
 
-	if !strings.Contains(html, "Coming (1)") {
+	if !strings.Contains(html, "Придут (1)") {
 		t.Error("expected attending count in output")
 	}
 	if !strings.Contains(html, "@alice") {

@@ -12,7 +12,9 @@ import (
 )
 
 // weekdayMap maps day names (lowercase) to time.Weekday
+// Supports both English and Russian day names
 var weekdayMap = map[string]time.Weekday{
+	// English
 	"sunday":    time.Sunday,
 	"sun":       time.Sunday,
 	"monday":    time.Monday,
@@ -27,6 +29,21 @@ var weekdayMap = map[string]time.Weekday{
 	"fri":       time.Friday,
 	"saturday":  time.Saturday,
 	"sat":       time.Saturday,
+	// Russian
+	"воскресенье": time.Sunday,
+	"вс":          time.Sunday,
+	"понедельник": time.Monday,
+	"пн":          time.Monday,
+	"вторник":     time.Tuesday,
+	"вт":          time.Tuesday,
+	"среда":       time.Wednesday,
+	"ср":          time.Wednesday,
+	"четверг":     time.Thursday,
+	"чт":          time.Thursday,
+	"пятница":     time.Friday,
+	"пт":          time.Friday,
+	"суббота":     time.Saturday,
+	"сб":          time.Saturday,
 }
 
 // nextWeekday returns the next occurrence of the given weekday from the reference date.
