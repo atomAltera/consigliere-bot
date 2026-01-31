@@ -104,7 +104,7 @@ func (b *Bot) RegisterCommands() {
 func (b *Bot) handlePoll(c tele.Context) error {
 	eventDate, err := parseEventDate(c.Args())
 	if err != nil {
-		return UserErrorf("Invalid date format. Use day name (e.g., monday, sat) or YYYY-MM-DD")
+		return UserErrorf(MsgInvalidDateFormat)
 	}
 
 	b.logger.Info("command /poll",
@@ -117,19 +117,19 @@ func (b *Bot) handlePoll(c tele.Context) error {
 	// Check if there's already an active poll in this chat
 	existingPoll, err := b.pollService.GetLatestActivePoll(c.Chat().ID)
 	if err == nil && existingPoll != nil {
-		return UserErrorf("There is already an active poll in this chat. Cancel it first with /cancel before creating a new one.")
+		return UserErrorf(MsgPollAlreadyExists)
 	}
 
 	// Create poll in database
 	p, err := b.pollService.CreatePoll(c.Chat().ID, eventDate)
 	if err != nil {
-		return WrapUserError("Failed to create poll. Please try again.", err)
+		return WrapUserError(MsgFailedCreatePoll, err)
 	}
 
 	// Render poll title from template
 	pollTitle, err := poll.RenderTitle(eventDate)
 	if err != nil {
-		return WrapUserError("Failed to render poll title. Please try again.", err)
+		return WrapUserError(MsgFailedRenderPollTitle, err)
 	}
 
 	// Create Telegram poll
@@ -147,14 +147,14 @@ func (b *Bot) handlePoll(c tele.Context) error {
 	// Send poll to the chat
 	sentMsg, err := b.bot.Send(c.Chat(), telePoll)
 	if err != nil {
-		return WrapUserError("Failed to send poll. Please try again.", err)
+		return WrapUserError(MsgFailedSendPoll, err)
 	}
 
 	// Update poll with Telegram IDs
 	p.TgPollID = sentMsg.Poll.ID
 	p.TgMessageID = sentMsg.ID
 	if err := b.pollService.UpdatePoll(p); err != nil {
-		return WrapUserError("Failed to save poll. Please try again.", err)
+		return WrapUserError(MsgFailedSavePoll, err)
 	}
 
 	return nil
@@ -171,25 +171,25 @@ func (b *Bot) handleResults(c tele.Context) error {
 	// Get latest active poll
 	p, err := b.pollService.GetLatestActivePoll(c.Chat().ID)
 	if err != nil || p == nil {
-		return UserErrorf("No active poll found")
+		return UserErrorf(MsgNoActivePoll)
 	}
 
 	// Get results
 	results, err := b.pollService.GetResults(p.ID)
 	if err != nil {
-		return WrapUserError("Failed to get results. Please try again.", err)
+		return WrapUserError(MsgFailedGetResults, err)
 	}
 
 	results.Poll = p
 	results.Title, err = poll.RenderTitle(p.EventDate)
 	if err != nil {
-		return WrapUserError("Failed to render title. Please try again.", err)
+		return WrapUserError(MsgFailedRenderTitle, err)
 	}
 
 	// Render results as HTML
 	html, err := poll.RenderResults(results)
 	if err != nil {
-		return WrapUserError("Failed to render results. Please try again.", err)
+		return WrapUserError(MsgFailedRenderResults, err)
 	}
 
 	// Send results message
@@ -197,7 +197,7 @@ func (b *Bot) handleResults(c tele.Context) error {
 		ParseMode: tele.ModeHTML,
 	})
 	if err != nil {
-		return WrapUserError("Failed to send results. Please try again.", err)
+		return WrapUserError(MsgFailedSendResults, err)
 	}
 
 	// Delete previous results message only after new one is sent successfully
@@ -206,7 +206,7 @@ func (b *Bot) handleResults(c tele.Context) error {
 	// Update poll with new results message ID
 	p.TgResultsMessageID = sentMsg.ID
 	if err := b.pollService.UpdatePoll(p); err != nil {
-		return WrapUserError("Failed to save results. Please try again.", err)
+		return WrapUserError(MsgFailedSaveResults, err)
 	}
 
 	// Now safe to delete the old message
@@ -236,11 +236,11 @@ func (b *Bot) handlePin(c tele.Context) error {
 	// Get latest active poll
 	p, err := b.pollService.GetLatestActivePoll(c.Chat().ID)
 	if err != nil || p == nil {
-		return UserErrorf("No active poll found")
+		return UserErrorf(MsgNoActivePoll)
 	}
 
 	if p.TgMessageID == 0 {
-		return UserErrorf("Poll message not found")
+		return UserErrorf(MsgPollMessageMissing)
 	}
 
 	// Unpin all previously pinned messages before pinning the new one
@@ -256,13 +256,13 @@ func (b *Bot) handlePin(c tele.Context) error {
 	}
 
 	if err := c.Bot().Pin(msg); err != nil {
-		return WrapUserError("Failed to pin poll. Please try again.", err)
+		return WrapUserError(MsgFailedPinPoll, err)
 	}
 
 	// Update poll status
 	p.IsPinned = true
 	if err := b.pollService.UpdatePoll(p); err != nil {
-		return WrapUserError("Failed to save poll status. Please try again.", err)
+		return WrapUserError(MsgFailedSavePollStatus, err)
 	}
 
 	return nil
@@ -279,7 +279,7 @@ func (b *Bot) handleCancel(c tele.Context) error {
 	// Get latest active poll
 	p, err := b.pollService.GetLatestActivePoll(c.Chat().ID)
 	if err != nil || p == nil {
-		return UserErrorf("No active poll found")
+		return UserErrorf(MsgNoActivePoll)
 	}
 
 	// Unpin the poll message if it was pinned
@@ -304,13 +304,10 @@ func (b *Bot) handleCancel(c tele.Context) error {
 	}
 
 	// Send cancellation message
-	cancellationMsg := fmt.Sprintf(
-		"⚠️ Event on %s has been cancelled",
-		p.EventDate.Format("Monday, January 2"),
-	)
+	cancellationMsg := fmt.Sprintf(MsgFmtEventCancelled, p.EventDate.Format("Monday, January 2"))
 	sentMsg, err := c.Bot().Send(c.Chat(), cancellationMsg)
 	if err != nil {
-		return WrapUserError("Failed to send cancellation message. Please try again.", err)
+		return WrapUserError(MsgFailedSendCancellation, err)
 	}
 
 	// Pin the cancellation message (without Silent option to notify all members)
@@ -322,7 +319,7 @@ func (b *Bot) handleCancel(c tele.Context) error {
 	p.IsActive = false
 	p.IsPinned = false
 	if err := b.pollService.UpdatePoll(p); err != nil {
-		return WrapUserError("Failed to save poll status. Please try again.", err)
+		return WrapUserError(MsgFailedSavePollStatus, err)
 	}
 
 	return nil
@@ -334,19 +331,19 @@ func (b *Bot) handleCancel(c tele.Context) error {
 func (b *Bot) handleVote(c tele.Context) error {
 	args := c.Args()
 	if len(args) < 2 {
-		return UserErrorf("Usage: /vote @username <option 1-5>\nOptions: 1=19:00, 2=20:00, 3=21:00+, 4=decide later, 5=not coming")
+		return UserErrorf(MsgVoteUsage)
 	}
 
 	// Parse username (remove @ prefix if present)
 	username := strings.TrimPrefix(args[0], "@")
 	if username == "" {
-		return UserErrorf("Invalid username")
+		return UserErrorf(MsgInvalidUsername)
 	}
 
 	// Parse option number (1-5)
 	optionNum, err := strconv.Atoi(args[1])
 	if err != nil || optionNum < 1 || optionNum > 5 {
-		return UserErrorf("Invalid option. Use 1-5:\n1=19:00, 2=20:00, 3=21:00+, 4=decide later, 5=not coming")
+		return UserErrorf(MsgInvalidVoteOption)
 	}
 
 	// Convert to 0-indexed option
@@ -363,7 +360,7 @@ func (b *Bot) handleVote(c tele.Context) error {
 	// Get latest active poll
 	p, err := b.pollService.GetLatestActivePoll(c.Chat().ID)
 	if err != nil || p == nil {
-		return UserErrorf("No active poll found")
+		return UserErrorf(MsgNoActivePoll)
 	}
 
 	// Create manual vote with synthetic user ID
@@ -377,24 +374,24 @@ func (b *Bot) handleVote(c tele.Context) error {
 	}
 
 	if err := b.pollService.RecordVote(v); err != nil {
-		return WrapUserError("Failed to record vote. Please try again.", err)
+		return WrapUserError(MsgFailedRecordVote, err)
 	}
 
 	// Update results message if exists
 	if p.TgResultsMessageID != 0 {
 		results, err := b.pollService.GetResults(p.ID)
 		if err != nil {
-			return WrapUserError("Failed to get results. Please try again.", err)
+			return WrapUserError(MsgFailedGetResults, err)
 		}
 		results.Poll = p
 		results.Title, err = poll.RenderTitle(p.EventDate)
 		if err != nil {
-			return WrapUserError("Failed to render title. Please try again.", err)
+			return WrapUserError(MsgFailedRenderTitle, err)
 		}
 
 		html, err := poll.RenderResults(results)
 		if err != nil {
-			return WrapUserError("Failed to render results. Please try again.", err)
+			return WrapUserError(MsgFailedRenderResults, err)
 		}
 
 		chat := &tele.Chat{ID: p.TgChatID}
@@ -404,7 +401,7 @@ func (b *Bot) handleVote(c tele.Context) error {
 		}
 	}
 
-	_, err = b.SendTemporary(c.Chat(), fmt.Sprintf("Recorded vote for %s: %s", username, poll.OptionKind(optionIndex).Label()), 0)
+	_, err = b.SendTemporary(c.Chat(), fmt.Sprintf(MsgFmtVoteRecorded, username, poll.OptionKind(optionIndex).Label()), 0)
 	return err
 }
 

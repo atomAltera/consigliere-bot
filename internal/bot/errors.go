@@ -61,7 +61,7 @@ func GetUserMessage(err error) string {
 	if errors.As(err, &userErr) {
 		return userErr.Message
 	}
-	return "An internal error occurred. Please try again later."
+	return MsgInternalError
 }
 
 // GetLogError extracts the error that should be logged.
