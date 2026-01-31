@@ -69,16 +69,6 @@ func (d *DB) Migrate() error {
 		return fmt.Errorf("execute schema: %w", err)
 	}
 
-	// Migration: Add is_manual column to votes if it doesn't exist
-	d.db.Exec(`ALTER TABLE votes ADD COLUMN is_manual INTEGER NOT NULL DEFAULT 0`)
-
-	// Migration: Add is_active and is_pinned columns to polls
-	d.db.Exec(`ALTER TABLE polls ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1`)
-	d.db.Exec(`ALTER TABLE polls ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0`)
-
-	// Migration: Drop legacy status column if it exists (SQLite 3.35.0+ supports DROP COLUMN)
-	d.db.Exec(`ALTER TABLE polls DROP COLUMN status`)
-
 	return nil
 }
 
