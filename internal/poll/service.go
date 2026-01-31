@@ -53,21 +53,6 @@ func (s *Service) RecordVote(v *Vote) error {
 	return s.votes.Record(v)
 }
 
-type Results struct {
-	Poll           *Poll
-	Title          string
-	TimeSlots      []TimeSlot
-	Undecided      []*Vote
-	NotComing      []*Vote
-	AttendingCount int
-}
-
-type TimeSlot struct {
-	Option OptionKind
-	Label  string
-	Voters []*Vote
-}
-
 // InvitationResults holds data for the invitation message template
 type InvitationResults struct {
 	Poll         *Poll
@@ -76,43 +61,6 @@ type InvitationResults struct {
 	ComingLater  []*Vote // 21:00+ voters
 	Undecided    []*Vote // "Decide later" voters
 	IsCancelled  bool
-}
-
-func (s *Service) GetResults(pollID int64) (*Results, error) {
-	votes, err := s.votes.GetCurrentVotes(pollID)
-	if err != nil {
-		return nil, err
-	}
-
-	results := &Results{
-		TimeSlots: []TimeSlot{
-			{Option: OptionComeAt19, Label: "19:00", Voters: []*Vote{}},
-			{Option: OptionComeAt20, Label: "20:00", Voters: []*Vote{}},
-			{Option: OptionComeAt21OrLater, Label: "21:00+", Voters: []*Vote{}},
-		},
-		Undecided: []*Vote{},
-		NotComing: []*Vote{},
-	}
-
-	for _, v := range votes {
-		switch OptionKind(v.TgOptionIndex) {
-		case OptionComeAt19:
-			results.TimeSlots[0].Voters = append(results.TimeSlots[0].Voters, v)
-			results.AttendingCount++
-		case OptionComeAt20:
-			results.TimeSlots[1].Voters = append(results.TimeSlots[1].Voters, v)
-			results.AttendingCount++
-		case OptionComeAt21OrLater:
-			results.TimeSlots[2].Voters = append(results.TimeSlots[2].Voters, v)
-			results.AttendingCount++
-		case OptionDecideLater:
-			results.Undecided = append(results.Undecided, v)
-		case OptionNotComing:
-			results.NotComing = append(results.NotComing, v)
-		}
-	}
-
-	return results, nil
 }
 
 // GetInvitationResults returns results formatted for the invitation message

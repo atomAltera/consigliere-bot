@@ -6,32 +6,76 @@ import (
 	"time"
 )
 
-func TestRenderResults(t *testing.T) {
-	results := &Results{
-		Poll: &Poll{
-			EventDate: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC),
+func TestRenderInvitation(t *testing.T) {
+	results := &InvitationResults{
+		EventDate: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC),
+		Participants: []*Vote{
+			{TgUsername: "alice", TgFirstName: "Alice", TgOptionIndex: int(OptionComeAt19)},
+			{TgUsername: "bob", TgFirstName: "Bob", TgOptionIndex: int(OptionComeAt20)},
 		},
-		TimeSlots: []TimeSlot{
-			{Option: OptionComeAt19, Label: "19:00", Voters: []*Vote{
-				{TgUsername: "alice", TgFirstName: "Alice"},
-			}},
-			{Option: OptionComeAt20, Label: "20:00", Voters: []*Vote{}},
-			{Option: OptionComeAt21OrLater, Label: "21:00+", Voters: []*Vote{}},
+		ComingLater: []*Vote{
+			{TgUsername: "charlie", TgFirstName: "Charlie"},
 		},
-		Undecided:      []*Vote{},
-		NotComing:      []*Vote{},
-		AttendingCount: 1,
+		Undecided:   []*Vote{},
+		IsCancelled: false,
 	}
 
-	html, err := RenderResults(results)
+	html, err := RenderInvitation(results)
 	if err != nil {
-		t.Fatalf("RenderResults failed: %v", err)
+		t.Fatalf("RenderInvitation failed: %v", err)
 	}
 
-	if !strings.Contains(html, "Придут (1)") {
-		t.Error("expected attending count in output")
+	if !strings.Contains(html, "Приглашаем на мафию") {
+		t.Error("expected invitation header in output")
+	}
+	if !strings.Contains(html, "Участники (2)") {
+		t.Error("expected participant count in output")
 	}
 	if !strings.Contains(html, "@alice") {
-		t.Error("expected username in output")
+		t.Error("expected alice username in output")
+	}
+	if !strings.Contains(html, "(19:00)") {
+		t.Error("expected time label in output")
+	}
+	if !strings.Contains(html, "Будут позже") {
+		t.Error("expected 'coming later' section in output")
+	}
+	if !strings.Contains(html, "@charlie") {
+		t.Error("expected charlie in coming later section")
+	}
+}
+
+func TestRenderInvitationCancelled(t *testing.T) {
+	results := &InvitationResults{
+		EventDate:    time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC),
+		Participants: []*Vote{},
+		ComingLater:  []*Vote{},
+		Undecided:    []*Vote{},
+		IsCancelled:  true,
+	}
+
+	html, err := RenderInvitation(results)
+	if err != nil {
+		t.Fatalf("RenderInvitation failed: %v", err)
+	}
+
+	if !strings.Contains(html, "Мероприятие отменено") {
+		t.Error("expected cancellation message in output")
+	}
+}
+
+func TestRenderTitle(t *testing.T) {
+	eventDate := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)
+
+	title, err := RenderTitle(eventDate)
+	if err != nil {
+		t.Fatalf("RenderTitle failed: %v", err)
+	}
+
+	if !strings.Contains(title, "Мафия") {
+		t.Error("expected 'Мафия' in title")
+	}
+	if !strings.Contains(title, "февраля") {
+		t.Error("expected month in title")
 	}
 }

@@ -83,22 +83,32 @@ func TestService_CreatePoll(t *testing.T) {
 	}
 }
 
-func TestService_GetResults(t *testing.T) {
+func TestService_GetInvitationResults(t *testing.T) {
 	pollRepo := &mockPollRepo{polls: make(map[int64]*Poll)}
 	voteRepo := &mockVoteRepo{}
 	svc := NewService(pollRepo, voteRepo)
 
 	p, _ := svc.CreatePoll(-123456, time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC))
 
-	// Add votes
-	voteRepo.Record(&Vote{PollID: p.ID, TgUserID: 1, TgFirstName: "Alice", TgOptionIndex: 0, VotedAt: time.Now()})
-	voteRepo.Record(&Vote{PollID: p.ID, TgUserID: 2, TgFirstName: "Bob", TgOptionIndex: 1, VotedAt: time.Now()})
+	// Add votes: 19:00, 20:00, 21:00+, decide later
+	now := time.Now()
+	voteRepo.Record(&Vote{PollID: p.ID, TgUserID: 1, TgFirstName: "Alice", TgOptionIndex: int(OptionComeAt19), VotedAt: now})
+	voteRepo.Record(&Vote{PollID: p.ID, TgUserID: 2, TgFirstName: "Bob", TgOptionIndex: int(OptionComeAt20), VotedAt: now})
+	voteRepo.Record(&Vote{PollID: p.ID, TgUserID: 3, TgFirstName: "Charlie", TgOptionIndex: int(OptionComeAt21OrLater), VotedAt: now})
+	voteRepo.Record(&Vote{PollID: p.ID, TgUserID: 4, TgFirstName: "Diana", TgOptionIndex: int(OptionDecideLater), VotedAt: now})
+	voteRepo.Record(&Vote{PollID: p.ID, TgUserID: 5, TgFirstName: "Eve", TgOptionIndex: int(OptionNotComing), VotedAt: now})
 
-	results, err := svc.GetResults(p.ID)
+	results, err := svc.GetInvitationResults(p.ID)
 	if err != nil {
-		t.Fatalf("GetResults failed: %v", err)
+		t.Fatalf("GetInvitationResults failed: %v", err)
 	}
-	if results.AttendingCount != 2 {
-		t.Errorf("expected 2 attending, got %d", results.AttendingCount)
+	if len(results.Participants) != 2 {
+		t.Errorf("expected 2 participants (19:00 + 20:00), got %d", len(results.Participants))
+	}
+	if len(results.ComingLater) != 1 {
+		t.Errorf("expected 1 coming later (21:00+), got %d", len(results.ComingLater))
+	}
+	if len(results.Undecided) != 1 {
+		t.Errorf("expected 1 undecided, got %d", len(results.Undecided))
 	}
 }

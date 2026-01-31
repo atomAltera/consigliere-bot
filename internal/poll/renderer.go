@@ -10,7 +10,6 @@ import (
 //go:embed templates/*
 var templates embed.FS
 
-var resultsTmpl *template.Template
 var invitationTmpl *template.Template
 var pollTitleTmpl *template.Template
 
@@ -68,10 +67,6 @@ var templateFuncs = template.FuncMap{
 
 func init() {
 	var err error
-	resultsTmpl, err = template.New("results.html").Funcs(templateFuncs).ParseFS(templates, "templates/results.html")
-	if err != nil {
-		panic(err)
-	}
 	invitationTmpl, err = template.New("invitation.html").Funcs(templateFuncs).ParseFS(templates, "templates/invitation.html")
 	if err != nil {
 		panic(err)
@@ -80,14 +75,6 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-}
-
-func RenderResults(results *Results) (string, error) {
-	var buf bytes.Buffer
-	if err := resultsTmpl.Execute(&buf, results); err != nil {
-		return "", err
-	}
-	return buf.String(), nil
 }
 
 // RenderTitle renders the poll title for the given event date.
