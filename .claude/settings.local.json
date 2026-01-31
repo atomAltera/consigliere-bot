@@ -2,18 +2,14 @@
   "permissions": {
     "allow": [
       "Skill(superpowers:brainstorming)",
-      "Bash(git -C /Users/altera/projects/mafia/consigliere-bot log --oneline -5)",
-      "mcp__gopls__go_workspace",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
       "Skill(superpowers:writing-plans)",
       "Skill(superpowers:subagent-driven-development)",
-      "mcp__brave__brave_web_search",
+      "mcp__gopls__go_workspace",
       "mcp__gopls__go_diagnostics",
-      "Bash(git -C /Users/altera/projects/mafia/consigliere-bot status)",
-      "Bash(git -C /Users/altera/projects/mafia/consigliere-bot diff)",
-      "Bash(git -C /Users/altera/projects/mafia/consigliere-bot add .gitignore cmd/consigliere/main.go internal/bot/bot.go internal/config/config.go internal/config/config_test.go)",
-      "Bash(git -C /Users/altera/projects/mafia/consigliere-bot commit -m \"$(cat <<''EOF''\nrefactor: remove unused TELEGRAM_GROUP_ID config\n\nThe bot already supported multi-chat operation via chat_id filtering\nin the storage layer, but was loading an unused TELEGRAM_GROUP_ID\nenvironment variable. This removes that dead code and simplifies\nthe configuration to just TELEGRAM_BOT_API_KEY and DB_PATH.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n)\")"
+      "mcp__brave__brave_web_search",
+      "Bash(go test:*)",
+      "Bash(go build:*)",
+      "Bash(git:*)"
     ]
   }
 }
