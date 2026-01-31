@@ -11,11 +11,22 @@ import (
 	"nuclight.org/consigliere/internal/storage"
 )
 
+// Version and BuildDate are set via ldflags during build
+var (
+	Version   = "dev"
+	BuildDate = "unknown"
+)
+
 func main() {
 	// Set up structured logger
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
 	}))
+
+	logger.Info("starting consigliere bot",
+		"version", Version,
+		"build_date", BuildDate,
+	)
 
 	// Load configuration
 	cfg, err := config.Load()
