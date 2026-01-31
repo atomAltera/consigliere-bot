@@ -357,9 +357,18 @@ func (b *Bot) handleCancel(c tele.Context) error {
 		}
 	}
 
-	// Update poll status - mark as inactive
+	// Post cancellation notification
+	cancelTitle, _ := poll.RenderTitle(p.EventDate)
+	cancellationMsg := fmt.Sprintf("❌ %s — отменена", cancelTitle)
+	sentMsg, err := c.Bot().Send(c.Chat(), cancellationMsg)
+	if err != nil {
+		return WrapUserError(MsgFailedSendCancellation, err)
+	}
+
+	// Update poll status - mark as inactive and save cancel message ID
 	p.IsActive = false
 	p.IsPinned = false
+	p.TgCancelMessageID = sentMsg.ID
 	if err := b.pollService.UpdatePoll(p); err != nil {
 		return WrapUserError(MsgFailedSavePollStatus, err)
 	}

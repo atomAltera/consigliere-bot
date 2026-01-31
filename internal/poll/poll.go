@@ -8,6 +8,7 @@ type Poll struct {
 	TgPollID           string
 	TgMessageID        int
 	TgResultsMessageID int
+	TgCancelMessageID  int
 	EventDate          time.Time
 	IsActive           bool
 	IsPinned           bool

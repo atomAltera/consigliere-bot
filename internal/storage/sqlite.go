@@ -43,6 +43,7 @@ func (d *DB) Migrate() error {
 		tg_poll_id TEXT,
 		tg_message_id INTEGER,
 		tg_results_message_id INTEGER,
+		tg_cancel_message_id INTEGER,
 		event_date DATE NOT NULL,
 		is_active INTEGER NOT NULL DEFAULT 1,
 		is_pinned INTEGER NOT NULL DEFAULT 0,
