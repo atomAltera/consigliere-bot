@@ -143,9 +143,36 @@ func (b *Bot) handlePoll(c tele.Context) error {
 		return WrapUserError(MsgFailedCreatePoll, err)
 	}
 
+	// Send invitation message first (empty participants)
+	invitationResults := &poll.InvitationResults{
+		Poll:         p,
+		EventDate:    eventDate,
+		Participants: []*poll.Vote{},
+		ComingLater:  []*poll.Vote{},
+		Undecided:    []*poll.Vote{},
+		IsCancelled:  false,
+	}
+
+	invitationHTML, err := poll.RenderInvitation(invitationResults)
+	if err != nil {
+		return WrapUserError(MsgFailedRenderResults, err)
+	}
+
+	invitationMsg, err := b.bot.Send(c.Chat(), invitationHTML, &tele.SendOptions{
+		ParseMode: tele.ModeHTML,
+	})
+	if err != nil {
+		return WrapUserError(MsgFailedSendResults, err)
+	}
+
+	// Store invitation message ID
+	p.TgResultsMessageID = invitationMsg.ID
+
 	// Render poll title from template
 	pollTitle, err := poll.RenderTitle(eventDate)
 	if err != nil {
+		// Clean up invitation message on failure
+		_ = b.bot.Delete(invitationMsg)
 		return WrapUserError(MsgFailedRenderPollTitle, err)
 	}
 
@@ -164,6 +191,8 @@ func (b *Bot) handlePoll(c tele.Context) error {
 	// Send poll to the chat
 	sentMsg, err := b.bot.Send(c.Chat(), telePoll)
 	if err != nil {
+		// Clean up invitation message on failure
+		_ = b.bot.Delete(invitationMsg)
 		return WrapUserError(MsgFailedSendPoll, err)
 	}
 
@@ -177,7 +206,7 @@ func (b *Bot) handlePoll(c tele.Context) error {
 	return nil
 }
 
-// handleResults posts the results message for the latest active poll
+// handleResults recreates the invitation message for the latest active poll
 func (b *Bot) handleResults(c tele.Context) error {
 	b.logger.Info("command /results",
 		"user_id", c.Sender().ID,
@@ -191,25 +220,23 @@ func (b *Bot) handleResults(c tele.Context) error {
 		return UserErrorf(MsgNoActivePoll)
 	}
 
-	// Get results
-	results, err := b.pollService.GetResults(p.ID)
+	// Get invitation results
+	results, err := b.pollService.GetInvitationResults(p.ID)
 	if err != nil {
 		return WrapUserError(MsgFailedGetResults, err)
 	}
 
 	results.Poll = p
-	results.Title, err = poll.RenderTitle(p.EventDate)
-	if err != nil {
-		return WrapUserError(MsgFailedRenderTitle, err)
-	}
+	results.EventDate = p.EventDate
+	results.IsCancelled = !p.IsActive
 
-	// Render results as HTML
-	html, err := poll.RenderResults(results)
+	// Render invitation as HTML
+	html, err := poll.RenderInvitation(results)
 	if err != nil {
 		return WrapUserError(MsgFailedRenderResults, err)
 	}
 
-	// Send results message
+	// Send new invitation message
 	sentMsg, err := c.Bot().Send(c.Chat(), html, &tele.SendOptions{
 		ParseMode: tele.ModeHTML,
 	})
@@ -235,7 +262,7 @@ func (b *Bot) handleResults(c tele.Context) error {
 			},
 		}
 		if err := c.Bot().Delete(msg); err != nil {
-			b.logger.Warn("failed to delete previous results message", "error", err)
+			b.logger.Warn("failed to delete previous invitation message", "error", err)
 		}
 	}
 
@@ -285,7 +312,7 @@ func (b *Bot) handlePin(c tele.Context) error {
 	return nil
 }
 
-// handleCancel cancels the event and deletes the results message
+// handleCancel cancels the event and updates the invitation message with cancellation footer
 func (b *Bot) handleCancel(c tele.Context) error {
 	b.logger.Info("command /cancel",
 		"user_id", c.Sender().ID,
@@ -307,29 +334,27 @@ func (b *Bot) handleCancel(c tele.Context) error {
 		}
 	}
 
-	// Delete results message if it exists
+	// Update invitation message with cancellation footer
 	if p.TgResultsMessageID != 0 {
-		msg := &tele.Message{
-			ID: p.TgResultsMessageID,
-			Chat: &tele.Chat{
-				ID: p.TgChatID,
-			},
-		}
-		if err := c.Bot().Delete(msg); err != nil {
-			b.logger.Warn("failed to delete results message", "error", err)
-		}
-	}
+		results, err := b.pollService.GetInvitationResults(p.ID)
+		if err != nil {
+			b.logger.Warn("failed to get invitation results for cancellation", "error", err)
+		} else {
+			results.Poll = p
+			results.EventDate = p.EventDate
+			results.IsCancelled = true
 
-	// Send cancellation message
-	cancellationMsg := fmt.Sprintf(MsgFmtEventCancelled, p.EventDate.Format("Monday, January 2"))
-	sentMsg, err := c.Bot().Send(c.Chat(), cancellationMsg)
-	if err != nil {
-		return WrapUserError(MsgFailedSendCancellation, err)
-	}
-
-	// Pin the cancellation message (without Silent option to notify all members)
-	if err := c.Bot().Pin(sentMsg); err != nil {
-		b.logger.Warn("failed to pin cancellation message", "error", err)
+			html, err := poll.RenderInvitation(results)
+			if err != nil {
+				b.logger.Warn("failed to render cancelled invitation", "error", err)
+			} else {
+				chat := &tele.Chat{ID: p.TgChatID}
+				msg := &tele.Message{ID: p.TgResultsMessageID, Chat: chat}
+				if _, err = b.bot.Edit(msg, html, tele.ModeHTML); err != nil {
+					b.logger.Warn("failed to update invitation message with cancellation", "error", err)
+				}
+			}
+		}
 	}
 
 	// Update poll status - mark as inactive
@@ -394,19 +419,17 @@ func (b *Bot) handleVote(c tele.Context) error {
 		return WrapUserError(MsgFailedRecordVote, err)
 	}
 
-	// Update results message if exists
+	// Update invitation message if exists
 	if p.TgResultsMessageID != 0 {
-		results, err := b.pollService.GetResults(p.ID)
+		results, err := b.pollService.GetInvitationResults(p.ID)
 		if err != nil {
 			return WrapUserError(MsgFailedGetResults, err)
 		}
 		results.Poll = p
-		results.Title, err = poll.RenderTitle(p.EventDate)
-		if err != nil {
-			return WrapUserError(MsgFailedRenderTitle, err)
-		}
+		results.EventDate = p.EventDate
+		results.IsCancelled = !p.IsActive
 
-		html, err := poll.RenderResults(results)
+		html, err := poll.RenderInvitation(results)
 		if err != nil {
 			return WrapUserError(MsgFailedRenderResults, err)
 		}
@@ -414,7 +437,7 @@ func (b *Bot) handleVote(c tele.Context) error {
 		chat := &tele.Chat{ID: p.TgChatID}
 		msg := &tele.Message{ID: p.TgResultsMessageID, Chat: chat}
 		if _, err = b.bot.Edit(msg, html, tele.ModeHTML); err != nil {
-			b.logger.Warn("failed to update results message", "error", err)
+			b.logger.Warn("failed to update invitation message", "error", err)
 		}
 	}
 

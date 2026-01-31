@@ -1,0 +1,27 @@
+🎭 <b>Приглашаем на мафию!</b>
+{{.EventDate | ruDate}}
+📍 ресторан JOIN BAR (orbeliani 20/4)
+💰 cтоимость 20₾
+{{if .Participants}}
+<b>Участники ({{len .Participants}}):</b>
+{{- range .Participants}}
+— {{.DisplayName}} ({{.TimeLabel}})
+{{- end}}
+{{else}}
+<b>Участники:</b>
+(пока никого)
+{{end}}
+{{- if .ComingLater}}
+
+<b>Будут позже:</b>
+{{range $i, $v := .ComingLater}}{{if $i}}, {{end}}{{$v.DisplayName}}{{end}}
+{{- end}}
+{{- if .Undecided}}
+
+<b>Ещё не решили:</b>
+{{range $i, $v := .Undecided}}{{if $i}}, {{end}}{{$v.DisplayName}}{{end}}
+{{- end}}
+{{- if .IsCancelled}}
+
+❌ <b>Мероприятие отменено</b>
+{{- end}}

@@ -40,3 +40,15 @@ func (v *Vote) DisplayName() string {
 	}
 	return v.TgFirstName
 }
+
+// TimeLabel returns the time label for display (e.g., "19:00", "20:00")
+func (v *Vote) TimeLabel() string {
+	switch OptionKind(v.TgOptionIndex) {
+	case OptionComeAt19:
+		return "19:00"
+	case OptionComeAt20:
+		return "20:00"
+	default:
+		return ""
+	}
+}

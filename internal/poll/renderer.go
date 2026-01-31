@@ -12,6 +12,7 @@ var templates embed.FS
 
 var resultsTmpl *template.Template
 var titleTmpl *template.Template
+var invitationTmpl *template.Template
 
 // Russian weekday names
 var russianWeekdays = []string{
@@ -75,6 +76,10 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+	invitationTmpl, err = template.New("invitation.html").Funcs(templateFuncs).ParseFS(templates, "templates/invitation.html")
+	if err != nil {
+		panic(err)
+	}
 }
 
 func RenderResults(results *Results) (string, error) {
@@ -89,6 +94,15 @@ func RenderResults(results *Results) (string, error) {
 func RenderTitle(eventDate time.Time) (string, error) {
 	var buf bytes.Buffer
 	if err := titleTmpl.Execute(&buf, eventDate); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
+
+// RenderInvitation renders the invitation message for the given results.
+func RenderInvitation(results *InvitationResults) (string, error) {
+	var buf bytes.Buffer
+	if err := invitationTmpl.Execute(&buf, results); err != nil {
 		return "", err
 	}
 	return buf.String(), nil

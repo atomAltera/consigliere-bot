@@ -68,6 +68,16 @@ type TimeSlot struct {
 	Voters []*Vote
 }
 
+// InvitationResults holds data for the invitation message template
+type InvitationResults struct {
+	Poll         *Poll
+	EventDate    time.Time
+	Participants []*Vote // 19:00 and 20:00 voters, ordered by vote time
+	ComingLater  []*Vote // 21:00+ voters
+	Undecided    []*Vote // "Decide later" voters
+	IsCancelled  bool
+}
+
 func (s *Service) GetResults(pollID int64) (*Results, error) {
 	votes, err := s.votes.GetCurrentVotes(pollID)
 	if err != nil {
@@ -99,6 +109,34 @@ func (s *Service) GetResults(pollID int64) (*Results, error) {
 			results.Undecided = append(results.Undecided, v)
 		case OptionNotComing:
 			results.NotComing = append(results.NotComing, v)
+		}
+	}
+
+	return results, nil
+}
+
+// GetInvitationResults returns results formatted for the invitation message
+func (s *Service) GetInvitationResults(pollID int64) (*InvitationResults, error) {
+	votes, err := s.votes.GetCurrentVotes(pollID)
+	if err != nil {
+		return nil, err
+	}
+
+	results := &InvitationResults{
+		Participants: []*Vote{},
+		ComingLater:  []*Vote{},
+		Undecided:    []*Vote{},
+	}
+
+	for _, v := range votes {
+		switch OptionKind(v.TgOptionIndex) {
+		case OptionComeAt19, OptionComeAt20:
+			results.Participants = append(results.Participants, v)
+		case OptionComeAt21OrLater:
+			results.ComingLater = append(results.ComingLater, v)
+		case OptionDecideLater:
+			results.Undecided = append(results.Undecided, v)
+		// OptionNotComing is not displayed
 		}
 	}
 
