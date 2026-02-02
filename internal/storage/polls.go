@@ -124,6 +124,9 @@ func (r *PollRepository) scanPoll(row *sql.Row) (*poll.Poll, error) {
 		&p.ID, &p.TgChatID, &tgPollID, &tgMessageID, &tgResultsMessageID, &tgCancelMessageID,
 		&p.EventDate, &optionsStr, &p.IsActive, &p.IsPinned, &p.CreatedAt,
 	)
+	if err == sql.ErrNoRows {
+		return nil, nil // Not found
+	}
 	if err != nil {
 		return nil, err
 	}

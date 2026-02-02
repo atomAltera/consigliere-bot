@@ -141,9 +141,12 @@ func TestPollRepository_GetLatestActive_NoPoll(t *testing.T) {
 
 	repo := NewPollRepository(db)
 
-	// Fetch latest for non-existent chat should return error
-	_, err := repo.GetLatestActive(-999999)
-	if err == nil {
-		t.Fatal("expected error for non-existent chat, got nil")
+	// Fetch latest for non-existent chat should return (nil, nil)
+	p, err := repo.GetLatestActive(-999999)
+	if err != nil {
+		t.Fatalf("expected nil error for non-existent chat, got %v", err)
+	}
+	if p != nil {
+		t.Fatal("expected nil poll for non-existent chat")
 	}
 }
