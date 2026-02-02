@@ -92,7 +92,7 @@ func TestService_CreatePoll(t *testing.T) {
 	}
 }
 
-func TestService_GetInvitationResults(t *testing.T) {
+func TestService_GetInvitationData(t *testing.T) {
 	pollRepo := &mockPollRepo{polls: make(map[int64]*Poll)}
 	voteRepo := &mockVoteRepo{}
 	svc := NewService(pollRepo, voteRepo)
@@ -107,9 +107,9 @@ func TestService_GetInvitationResults(t *testing.T) {
 	voteRepo.Record(&Vote{PollID: p.ID, TgUserID: 4, TgFirstName: "Diana", TgOptionIndex: int(OptionDecideLater), VotedAt: now})
 	voteRepo.Record(&Vote{PollID: p.ID, TgUserID: 5, TgFirstName: "Eve", TgOptionIndex: int(OptionNotComing), VotedAt: now})
 
-	results, err := svc.GetInvitationResults(p.ID)
+	results, err := svc.GetInvitationData(p.ID)
 	if err != nil {
-		t.Fatalf("GetInvitationResults failed: %v", err)
+		t.Fatalf("GetInvitationData failed: %v", err)
 	}
 	if len(results.Participants) != 2 {
 		t.Errorf("expected 2 participants (19:00 + 20:00), got %d", len(results.Participants))

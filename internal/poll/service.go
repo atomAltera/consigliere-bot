@@ -24,10 +24,19 @@ func NewService(polls PollRepository, votes VoteRepository) *Service {
 	return &Service{polls: polls, votes: votes}
 }
 
-func (s *Service) CreatePoll(chatID int64, eventDate time.Time) (*Poll, error) {
+// CreatePoll creates a new poll for the given chat and event date.
+// Returns ErrPollExists if an active poll already exists in this chat.
+func (s *Service) CreatePoll(tgChatID int64, eventDate time.Time) (*Poll, error) {
+	// Check if there's already an active poll
+	existing, err := s.polls.GetLatestActive(tgChatID)
+	if err == nil && existing != nil {
+		return nil, ErrPollExists
+	}
+
 	p := &Poll{
-		TgChatID:  chatID,
+		TgChatID:  tgChatID,
 		EventDate: eventDate,
+		Options:   DefaultOptions(),
 		IsActive:  true,
 		IsPinned:  false,
 		CreatedAt: time.Now(),
@@ -38,12 +47,84 @@ func (s *Service) CreatePoll(chatID int64, eventDate time.Time) (*Poll, error) {
 	return p, nil
 }
 
-func (s *Service) GetLatestActivePoll(chatID int64) (*Poll, error) {
-	return s.polls.GetLatestActive(chatID)
+// GetActivePoll returns the latest active poll for the given chat.
+// Returns ErrNoActivePoll if no active poll exists.
+func (s *Service) GetActivePoll(tgChatID int64) (*Poll, error) {
+	p, err := s.polls.GetLatestActive(tgChatID)
+	if err != nil {
+		return nil, err
+	}
+	if p == nil {
+		return nil, ErrNoActivePoll
+	}
+	return p, nil
 }
 
-func (s *Service) GetLatestCancelledPoll(chatID int64) (*Poll, error) {
-	return s.polls.GetLatestCancelled(chatID)
+// CancelPoll cancels the active poll in the given chat.
+// Returns ErrNoActivePoll if no active poll exists.
+func (s *Service) CancelPoll(tgChatID int64) (*Poll, error) {
+	p, err := s.polls.GetLatestActive(tgChatID)
+	if err != nil {
+		return nil, err
+	}
+	if p == nil {
+		return nil, ErrNoActivePoll
+	}
+
+	p.IsActive = false
+	p.IsPinned = false
+	if err := s.polls.Update(p); err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
+// RestorePoll restores the latest cancelled poll in the given chat.
+// Returns ErrNoCancelledPoll if no cancelled poll exists.
+// Returns ErrPollDatePassed if the poll's event date is in the past.
+// Note: TgCancelMessageID is preserved so the handler can delete the message.
+func (s *Service) RestorePoll(tgChatID int64) (*Poll, error) {
+	p, err := s.polls.GetLatestCancelled(tgChatID)
+	if err != nil {
+		return nil, err
+	}
+	if p == nil {
+		return nil, ErrNoCancelledPoll
+	}
+
+	// Check if event date is today or future
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	eventDay := time.Date(p.EventDate.Year(), p.EventDate.Month(), p.EventDate.Day(), 0, 0, 0, 0, p.EventDate.Location())
+
+	if eventDay.Before(today) {
+		return nil, ErrPollDatePassed
+	}
+
+	p.IsActive = true
+	// Note: Don't clear TgCancelMessageID here - let handler delete the message first
+	if err := s.polls.Update(p); err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
+// SetPinned sets the pinned status for the active poll in the given chat.
+// Returns ErrNoActivePoll if no active poll exists.
+func (s *Service) SetPinned(tgChatID int64, pinned bool) (*Poll, error) {
+	p, err := s.polls.GetLatestActive(tgChatID)
+	if err != nil {
+		return nil, err
+	}
+	if p == nil {
+		return nil, ErrNoActivePoll
+	}
+
+	p.IsPinned = pinned
+	if err := s.polls.Update(p); err != nil {
+		return nil, err
+	}
+	return p, nil
 }
 
 func (s *Service) GetPollByTgPollID(tgPollID string) (*Poll, error) {
@@ -54,12 +135,13 @@ func (s *Service) UpdatePoll(p *Poll) error {
 	return s.polls.Update(p)
 }
 
+
 func (s *Service) RecordVote(v *Vote) error {
 	return s.votes.Record(v)
 }
 
-// InvitationResults holds data for the invitation message template
-type InvitationResults struct {
+// InvitationData holds data for the invitation message template
+type InvitationData struct {
 	Poll         *Poll
 	EventDate    time.Time
 	Participants []*Vote // 19:00 and 20:00 voters, ordered by vote time
@@ -68,14 +150,14 @@ type InvitationResults struct {
 	IsCancelled  bool
 }
 
-// GetInvitationResults returns results formatted for the invitation message
-func (s *Service) GetInvitationResults(pollID int64) (*InvitationResults, error) {
+// GetInvitationData returns results formatted for the invitation message
+func (s *Service) GetInvitationData(pollID int64) (*InvitationData, error) {
 	votes, err := s.votes.GetCurrentVotes(pollID)
 	if err != nil {
 		return nil, err
 	}
 
-	results := &InvitationResults{
+	results := &InvitationData{
 		Participants: []*Vote{},
 		ComingLater:  []*Vote{},
 		Undecided:    []*Vote{},

@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -132,20 +133,17 @@ func (b *Bot) handlePoll(c tele.Context) error {
 		"event_date", eventDate.Format("2006-01-02"),
 	)
 
-	// Check if there's already an active poll in this chat
-	existingPoll, err := b.pollService.GetLatestActivePoll(c.Chat().ID)
-	if err == nil && existingPoll != nil {
-		return UserErrorf(MsgPollAlreadyExists)
-	}
-
-	// Create poll in database
+	// Create poll in database (service checks for existing poll)
 	p, err := b.pollService.CreatePoll(c.Chat().ID, eventDate)
 	if err != nil {
+		if errors.Is(err, poll.ErrPollExists) {
+			return UserErrorf(MsgPollAlreadyExists)
+		}
 		return WrapUserError(MsgFailedCreatePoll, err)
 	}
 
 	// Send invitation message first (empty participants)
-	invitationResults := &poll.InvitationResults{
+	invitationData := &poll.InvitationData{
 		Poll:         p,
 		EventDate:    eventDate,
 		Participants: []*poll.Vote{},
@@ -154,7 +152,7 @@ func (b *Bot) handlePoll(c tele.Context) error {
 		IsCancelled:  false,
 	}
 
-	invitationHTML, err := poll.RenderInvitation(invitationResults)
+	invitationHTML, err := RenderInvitation(invitationData)
 	if err != nil {
 		return WrapUserError(MsgFailedRenderResults, err)
 	}
@@ -170,7 +168,7 @@ func (b *Bot) handlePoll(c tele.Context) error {
 	p.TgResultsMessageID = invitationMsg.ID
 
 	// Render poll title from template
-	pollTitle, err := poll.RenderTitle(eventDate)
+	pollTitle, err := RenderPollTitle(eventDate)
 	if err != nil {
 		// Clean up invitation message on failure
 		_ = b.bot.Delete(invitationMsg)
@@ -178,7 +176,7 @@ func (b *Bot) handlePoll(c tele.Context) error {
 	}
 
 	// Create Telegram poll
-	pollOptions := poll.AllOptions()
+	pollOptions := AllOptionLabels()
 	telePoll := &tele.Poll{
 		Type:            tele.PollRegular,
 		Question:        pollTitle,
@@ -215,14 +213,17 @@ func (b *Bot) handleResults(c tele.Context) error {
 		"chat_id", c.Chat().ID,
 	)
 
-	// Get latest active poll
-	p, err := b.pollService.GetLatestActivePoll(c.Chat().ID)
-	if err != nil || p == nil {
-		return UserErrorf(MsgNoActivePoll)
+	// Get active poll
+	p, err := b.pollService.GetActivePoll(c.Chat().ID)
+	if err != nil {
+		if errors.Is(err, poll.ErrNoActivePoll) {
+			return UserErrorf(MsgNoActivePoll)
+		}
+		return WrapUserError(MsgFailedGetPoll, err)
 	}
 
-	// Get invitation results
-	results, err := b.pollService.GetInvitationResults(p.ID)
+	// Get invitation data
+	results, err := b.pollService.GetInvitationData(p.ID)
 	if err != nil {
 		return WrapUserError(MsgFailedGetResults, err)
 	}
@@ -232,7 +233,7 @@ func (b *Bot) handleResults(c tele.Context) error {
 	results.IsCancelled = !p.IsActive
 
 	// Render invitation as HTML
-	html, err := poll.RenderInvitation(results)
+	html, err := RenderInvitation(results)
 	if err != nil {
 		return WrapUserError(MsgFailedRenderResults, err)
 	}
@@ -278,10 +279,13 @@ func (b *Bot) handlePin(c tele.Context) error {
 		"chat_id", c.Chat().ID,
 	)
 
-	// Get latest active poll
-	p, err := b.pollService.GetLatestActivePoll(c.Chat().ID)
-	if err != nil || p == nil {
-		return UserErrorf(MsgNoActivePoll)
+	// Get active poll
+	p, err := b.pollService.GetActivePoll(c.Chat().ID)
+	if err != nil {
+		if errors.Is(err, poll.ErrNoActivePoll) {
+			return UserErrorf(MsgNoActivePoll)
+		}
+		return WrapUserError(MsgFailedGetPoll, err)
 	}
 
 	if p.TgMessageID == 0 {
@@ -296,7 +300,7 @@ func (b *Bot) handlePin(c tele.Context) error {
 
 	// Pin the poll message (without Silent option to notify all members)
 	msg := &tele.Message{
-		ID: p.TgMessageID,
+		ID:   p.TgMessageID,
 		Chat: chat,
 	}
 
@@ -304,9 +308,9 @@ func (b *Bot) handlePin(c tele.Context) error {
 		return WrapUserError(MsgFailedPinPoll, err)
 	}
 
-	// Update poll status
-	p.IsPinned = true
-	if err := b.pollService.UpdatePoll(p); err != nil {
+	// Update poll status via service
+	_, err = b.pollService.SetPinned(c.Chat().ID, true)
+	if err != nil {
 		return WrapUserError(MsgFailedSavePollStatus, err)
 	}
 
@@ -321,14 +325,17 @@ func (b *Bot) handleCancel(c tele.Context) error {
 		"chat_id", c.Chat().ID,
 	)
 
-	// Get latest active poll
-	p, err := b.pollService.GetLatestActivePoll(c.Chat().ID)
-	if err != nil || p == nil {
-		return UserErrorf(MsgNoActivePoll)
+	// Cancel poll via service (marks as inactive)
+	p, err := b.pollService.CancelPoll(c.Chat().ID)
+	if err != nil {
+		if errors.Is(err, poll.ErrNoActivePoll) {
+			return UserErrorf(MsgNoActivePoll)
+		}
+		return WrapUserError(MsgFailedCancelPoll, err)
 	}
 
 	// Unpin the poll message if it was pinned
-	if p.IsPinned && p.TgMessageID != 0 {
+	if p.TgMessageID != 0 {
 		chat := &tele.Chat{ID: p.TgChatID}
 		if err := c.Bot().Unpin(chat, p.TgMessageID); err != nil {
 			b.logger.Warn("failed to unpin poll message", "error", err)
@@ -337,15 +344,15 @@ func (b *Bot) handleCancel(c tele.Context) error {
 
 	// Update invitation message with cancellation footer
 	if p.TgResultsMessageID != 0 {
-		results, err := b.pollService.GetInvitationResults(p.ID)
+		results, err := b.pollService.GetInvitationData(p.ID)
 		if err != nil {
-			b.logger.Warn("failed to get invitation results for cancellation", "error", err)
+			b.logger.Warn("failed to get invitation data for cancellation", "error", err)
 		} else {
 			results.Poll = p
 			results.EventDate = p.EventDate
 			results.IsCancelled = true
 
-			html, err := poll.RenderInvitation(results)
+			html, err := RenderInvitation(results)
 			if err != nil {
 				b.logger.Warn("failed to render cancelled invitation", "error", err)
 			} else {
@@ -359,16 +366,14 @@ func (b *Bot) handleCancel(c tele.Context) error {
 	}
 
 	// Post cancellation notification
-	cancelTitle, _ := poll.RenderTitle(p.EventDate)
+	cancelTitle, _ := RenderPollTitle(p.EventDate)
 	cancellationMsg := fmt.Sprintf("❌ %s — отменена", cancelTitle)
 	sentMsg, err := c.Bot().Send(c.Chat(), cancellationMsg)
 	if err != nil {
 		return WrapUserError(MsgFailedSendCancellation, err)
 	}
 
-	// Update poll status - mark as inactive and save cancel message ID
-	p.IsActive = false
-	p.IsPinned = false
+	// Save cancel message ID
 	p.TgCancelMessageID = sentMsg.ID
 	if err := b.pollService.UpdatePoll(p); err != nil {
 		return WrapUserError(MsgFailedSavePollStatus, err)
@@ -385,32 +390,29 @@ func (b *Bot) handleRestore(c tele.Context) error {
 		"chat_id", c.Chat().ID,
 	)
 
-	// Get latest cancelled poll
-	p, err := b.pollService.GetLatestCancelledPoll(c.Chat().ID)
-	if err != nil || p == nil {
-		return UserErrorf(MsgNoCancelledPoll)
-	}
-
-	// Check if event date is today or future
-	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	eventDay := time.Date(p.EventDate.Year(), p.EventDate.Month(), p.EventDate.Day(), 0, 0, 0, 0, p.EventDate.Location())
-
-	if eventDay.Before(today) {
-		return UserErrorf(MsgPollDatePassed)
+	// Restore poll via service (validates date, marks as active)
+	p, err := b.pollService.RestorePoll(c.Chat().ID)
+	if err != nil {
+		if errors.Is(err, poll.ErrNoCancelledPoll) {
+			return UserErrorf(MsgNoCancelledPoll)
+		}
+		if errors.Is(err, poll.ErrPollDatePassed) {
+			return UserErrorf(MsgPollDatePassed)
+		}
+		return WrapUserError(MsgFailedRestorePoll, err)
 	}
 
 	// Update invitation message to remove cancellation footer
 	if p.TgResultsMessageID != 0 {
-		results, err := b.pollService.GetInvitationResults(p.ID)
+		results, err := b.pollService.GetInvitationData(p.ID)
 		if err != nil {
-			b.logger.Warn("failed to get invitation results for restore", "error", err)
+			b.logger.Warn("failed to get invitation data for restore", "error", err)
 		} else {
 			results.Poll = p
 			results.EventDate = p.EventDate
 			results.IsCancelled = false
 
-			html, err := poll.RenderInvitation(results)
+			html, err := RenderInvitation(results)
 			if err != nil {
 				b.logger.Warn("failed to render restored invitation", "error", err)
 			} else {
@@ -423,20 +425,17 @@ func (b *Bot) handleRestore(c tele.Context) error {
 		}
 	}
 
-	// Delete cancellation notification message
+	// Delete cancellation notification message and clear ID
 	if p.TgCancelMessageID != 0 {
 		chat := &tele.Chat{ID: p.TgChatID}
 		msg := &tele.Message{ID: p.TgCancelMessageID, Chat: chat}
 		if err := b.bot.Delete(msg); err != nil {
 			b.logger.Warn("failed to delete cancellation message", "error", err)
 		}
-	}
-
-	// Update poll status - mark as active and clear cancel message ID
-	p.IsActive = true
-	p.TgCancelMessageID = 0
-	if err := b.pollService.UpdatePoll(p); err != nil {
-		return WrapUserError(MsgFailedSavePollStatus, err)
+		p.TgCancelMessageID = 0
+		if err := b.pollService.UpdatePoll(p); err != nil {
+			b.logger.Warn("failed to clear cancel message ID", "error", err)
+		}
 	}
 
 	return nil
@@ -471,13 +470,16 @@ func (b *Bot) handleVote(c tele.Context) error {
 		"username", c.Sender().Username,
 		"chat_id", c.Chat().ID,
 		"target_username", username,
-		"option", poll.OptionKind(optionIndex).Label(),
+		"option", OptionLabel(poll.OptionKind(optionIndex)),
 	)
 
-	// Get latest active poll
-	p, err := b.pollService.GetLatestActivePoll(c.Chat().ID)
-	if err != nil || p == nil {
-		return UserErrorf(MsgNoActivePoll)
+	// Get active poll
+	p, err := b.pollService.GetActivePoll(c.Chat().ID)
+	if err != nil {
+		if errors.Is(err, poll.ErrNoActivePoll) {
+			return UserErrorf(MsgNoActivePoll)
+		}
+		return WrapUserError(MsgFailedGetPoll, err)
 	}
 
 	// Create manual vote with synthetic user ID
@@ -496,7 +498,7 @@ func (b *Bot) handleVote(c tele.Context) error {
 
 	// Update invitation message if exists
 	if p.TgResultsMessageID != 0 {
-		results, err := b.pollService.GetInvitationResults(p.ID)
+		results, err := b.pollService.GetInvitationData(p.ID)
 		if err != nil {
 			return WrapUserError(MsgFailedGetResults, err)
 		}
@@ -504,7 +506,7 @@ func (b *Bot) handleVote(c tele.Context) error {
 		results.EventDate = p.EventDate
 		results.IsCancelled = !p.IsActive
 
-		html, err := poll.RenderInvitation(results)
+		html, err := RenderInvitation(results)
 		if err != nil {
 			return WrapUserError(MsgFailedRenderResults, err)
 		}
@@ -516,7 +518,7 @@ func (b *Bot) handleVote(c tele.Context) error {
 		}
 	}
 
-	_, err = b.SendTemporary(c.Chat(), fmt.Sprintf(MsgFmtVoteRecorded, username, poll.OptionKind(optionIndex).Label()), 0)
+	_, err = b.SendTemporary(c.Chat(), fmt.Sprintf(MsgFmtVoteRecorded, username, OptionLabel(poll.OptionKind(optionIndex))), 0)
 	return err
 }
 

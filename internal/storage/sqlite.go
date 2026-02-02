@@ -45,6 +45,7 @@ func (d *DB) Migrate() error {
 		tg_results_message_id INTEGER,
 		tg_cancel_message_id INTEGER,
 		event_date DATE NOT NULL,
+		options TEXT NOT NULL DEFAULT '0,1,2,3,4',
 		is_active INTEGER NOT NULL DEFAULT 1,
 		is_pinned INTEGER NOT NULL DEFAULT 0,
 		created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP

@@ -41,7 +41,7 @@ func (b *Bot) handlePollAnswer(c tele.Context) error {
 
 	optionLabel := "retracted"
 	if optionIndex >= 0 {
-		optionLabel = poll.OptionKind(optionIndex).Label()
+		optionLabel = OptionLabel(poll.OptionKind(optionIndex))
 	}
 
 	b.logger.Info("vote recorded",
@@ -57,15 +57,15 @@ func (b *Bot) handlePollAnswer(c tele.Context) error {
 
 	// Update invitation message if exists
 	if p.TgResultsMessageID != 0 {
-		results, err := b.pollService.GetInvitationResults(p.ID)
+		results, err := b.pollService.GetInvitationData(p.ID)
 		if err != nil {
-			return fmt.Errorf("get invitation results: %w", err)
+			return fmt.Errorf("get invitation data: %w", err)
 		}
 		results.Poll = p
 		results.EventDate = p.EventDate
 		results.IsCancelled = !p.IsActive
 
-		html, err := poll.RenderInvitation(results)
+		html, err := RenderInvitation(results)
 		if err != nil {
 			return fmt.Errorf("render invitation: %w", err)
 		}

@@ -10,6 +10,7 @@ type Poll struct {
 	TgResultsMessageID int
 	TgCancelMessageID  int
 	EventDate          time.Time
+	Options            []OptionKind
 	IsActive           bool
 	IsPinned           bool
 	CreatedAt          time.Time

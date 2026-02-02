@@ -1,10 +1,12 @@
-package poll
+package bot
 
 import (
 	"bytes"
 	"embed"
 	"html/template"
 	"time"
+
+	"nuclight.org/consigliere/internal/poll"
 )
 
 //go:embed templates/*
@@ -40,9 +42,9 @@ var russianMonths = []string{
 	"декабря",
 }
 
-// formatDateRussian formats a date in Russian locale
+// FormatDateRussian formats a date in Russian locale
 // Example: "понедельник, 15 января"
-func formatDateRussian(t time.Time) string {
+func FormatDateRussian(t time.Time) string {
 	weekday := russianWeekdays[t.Weekday()]
 	day := t.Day()
 	month := russianMonths[t.Month()-1]
@@ -61,7 +63,7 @@ func formatDateRussianShort(t time.Time) string {
 }
 
 var templateFuncs = template.FuncMap{
-	"ruDate":      formatDateRussian,
+	"ruDate":      FormatDateRussian,
 	"ruDateShort": formatDateRussianShort,
 }
 
@@ -77,8 +79,8 @@ func init() {
 	}
 }
 
-// RenderTitle renders the poll title for the given event date.
-func RenderTitle(eventDate time.Time) (string, error) {
+// RenderPollTitle renders the poll title for the given event date.
+func RenderPollTitle(eventDate time.Time) (string, error) {
 	var buf bytes.Buffer
 	if err := pollTitleTmpl.Execute(&buf, eventDate); err != nil {
 		return "", err
@@ -86,11 +88,17 @@ func RenderTitle(eventDate time.Time) (string, error) {
 	return buf.String(), nil
 }
 
-// RenderInvitation renders the invitation message for the given results.
-func RenderInvitation(results *InvitationResults) (string, error) {
+// RenderInvitation renders the invitation message for the given data.
+func RenderInvitation(data *poll.InvitationData) (string, error) {
 	var buf bytes.Buffer
-	if err := invitationTmpl.Execute(&buf, results); err != nil {
+	if err := invitationTmpl.Execute(&buf, data); err != nil {
 		return "", err
 	}
 	return buf.String(), nil
+}
+
+// HelpMessage returns the help message HTML.
+func HelpMessage() string {
+	content, _ := templates.ReadFile("templates/help.html")
+	return string(content)
 }
