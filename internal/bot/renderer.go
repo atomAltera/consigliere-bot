@@ -78,7 +78,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	cancelTmpl, err = template.New("cancel.txt").Funcs(templateFuncs).ParseFS(templates, "templates/cancel.txt")
+	cancelTmpl, err = template.New("cancel.html").Funcs(templateFuncs).ParseFS(templates, "templates/cancel.html")
 	if err != nil {
 		panic(err)
 	}
