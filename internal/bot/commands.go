@@ -365,9 +365,26 @@ func (b *Bot) handleCancel(c tele.Context) error {
 		}
 	}
 
-	// Post cancellation notification
-	cancelTitle, _ := RenderPollTitle(p.EventDate)
-	cancellationMsg := fmt.Sprintf("❌ %s — отменена", cancelTitle)
+	// Post cancellation notification with mentions
+	cancelData := &CancelData{EventDate: p.EventDate}
+
+	// Add mentions of attending participants
+	usernames, err := b.pollService.GetAttendingUsernames(p.ID)
+	if err != nil {
+		b.logger.Warn("failed to get attending usernames", "error", err)
+	} else if len(usernames) > 0 {
+		mentions := make([]string, len(usernames))
+		for i, u := range usernames {
+			mentions[i] = "@" + u
+		}
+		cancelData.Mentions = strings.Join(mentions, ", ")
+	}
+
+	cancellationMsg, err := RenderCancelMessage(cancelData)
+	if err != nil {
+		return WrapUserError(MsgFailedRenderCancellation, err)
+	}
+
 	sentMsg, err := c.Bot().Send(c.Chat(), cancellationMsg)
 	if err != nil {
 		return WrapUserError(MsgFailedSendCancellation, err)

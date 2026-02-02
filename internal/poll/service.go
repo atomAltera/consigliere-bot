@@ -150,6 +150,23 @@ type InvitationData struct {
 	IsCancelled  bool
 }
 
+// GetAttendingUsernames returns usernames of all participants who voted to attend
+// (19:00, 20:00, or 21:00+). Returns empty slice if no one is attending.
+func (s *Service) GetAttendingUsernames(pollID int64) ([]string, error) {
+	votes, err := s.votes.GetCurrentVotes(pollID)
+	if err != nil {
+		return nil, err
+	}
+
+	var usernames []string
+	for _, v := range votes {
+		if OptionKind(v.TgOptionIndex).IsAttending() && v.TgUsername != "" {
+			usernames = append(usernames, v.TgUsername)
+		}
+	}
+	return usernames, nil
+}
+
 // GetInvitationData returns results formatted for the invitation message
 func (s *Service) GetInvitationData(pollID int64) (*InvitationData, error) {
 	votes, err := s.votes.GetCurrentVotes(pollID)

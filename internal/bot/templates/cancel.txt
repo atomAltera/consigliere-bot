@@ -1,0 +1,5 @@
+❌ {{ .EventDate | ruDate }} — отменена
+{{- if .Mentions }}
+
+{{ .Mentions }}
+{{- end }}
