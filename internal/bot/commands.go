@@ -109,6 +109,7 @@ func (b *Bot) RegisterCommands() {
 	adminGroup.Handle("/results", b.handleResults)
 	adminGroup.Handle("/pin", b.handlePin)
 	adminGroup.Handle("/cancel", b.handleCancel)
+	adminGroup.Handle("/restore", b.handleRestore)
 	adminGroup.Handle("/vote", b.handleVote)
 	adminGroup.Handle("/help", b.handleHelp)
 }
@@ -369,6 +370,71 @@ func (b *Bot) handleCancel(c tele.Context) error {
 	p.IsActive = false
 	p.IsPinned = false
 	p.TgCancelMessageID = sentMsg.ID
+	if err := b.pollService.UpdatePoll(p); err != nil {
+		return WrapUserError(MsgFailedSavePollStatus, err)
+	}
+
+	return nil
+}
+
+// handleRestore restores the last cancelled poll if it's for today or a future date
+func (b *Bot) handleRestore(c tele.Context) error {
+	b.logger.Info("command /restore",
+		"user_id", c.Sender().ID,
+		"username", c.Sender().Username,
+		"chat_id", c.Chat().ID,
+	)
+
+	// Get latest cancelled poll
+	p, err := b.pollService.GetLatestCancelledPoll(c.Chat().ID)
+	if err != nil || p == nil {
+		return UserErrorf(MsgNoCancelledPoll)
+	}
+
+	// Check if event date is today or future
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	eventDay := time.Date(p.EventDate.Year(), p.EventDate.Month(), p.EventDate.Day(), 0, 0, 0, 0, p.EventDate.Location())
+
+	if eventDay.Before(today) {
+		return UserErrorf(MsgPollDatePassed)
+	}
+
+	// Update invitation message to remove cancellation footer
+	if p.TgResultsMessageID != 0 {
+		results, err := b.pollService.GetInvitationResults(p.ID)
+		if err != nil {
+			b.logger.Warn("failed to get invitation results for restore", "error", err)
+		} else {
+			results.Poll = p
+			results.EventDate = p.EventDate
+			results.IsCancelled = false
+
+			html, err := poll.RenderInvitation(results)
+			if err != nil {
+				b.logger.Warn("failed to render restored invitation", "error", err)
+			} else {
+				chat := &tele.Chat{ID: p.TgChatID}
+				msg := &tele.Message{ID: p.TgResultsMessageID, Chat: chat}
+				if _, err = b.bot.Edit(msg, html, tele.ModeHTML); err != nil {
+					b.logger.Warn("failed to update invitation message", "error", err)
+				}
+			}
+		}
+	}
+
+	// Delete cancellation notification message
+	if p.TgCancelMessageID != 0 {
+		chat := &tele.Chat{ID: p.TgChatID}
+		msg := &tele.Message{ID: p.TgCancelMessageID, Chat: chat}
+		if err := b.bot.Delete(msg); err != nil {
+			b.logger.Warn("failed to delete cancellation message", "error", err)
+		}
+	}
+
+	// Update poll status - mark as active and clear cancel message ID
+	p.IsActive = true
+	p.TgCancelMessageID = 0
 	if err := b.pollService.UpdatePoll(p); err != nil {
 		return WrapUserError(MsgFailedSavePollStatus, err)
 	}

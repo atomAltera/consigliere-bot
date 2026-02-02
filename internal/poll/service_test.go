@@ -26,6 +26,15 @@ func (m *mockPollRepo) GetLatestActive(chatID int64) (*Poll, error) {
 	return nil, nil
 }
 
+func (m *mockPollRepo) GetLatestCancelled(chatID int64) (*Poll, error) {
+	for _, p := range m.polls {
+		if p.TgChatID == chatID && !p.IsActive {
+			return p, nil
+		}
+	}
+	return nil, nil
+}
+
 func (m *mockPollRepo) GetByTgPollID(tgPollID string) (*Poll, error) {
 	for _, p := range m.polls {
 		if p.TgPollID == tgPollID {

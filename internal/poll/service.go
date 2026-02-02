@@ -5,6 +5,7 @@ import "time"
 type PollRepository interface {
 	Create(p *Poll) error
 	GetLatestActive(chatID int64) (*Poll, error)
+	GetLatestCancelled(chatID int64) (*Poll, error)
 	GetByTgPollID(tgPollID string) (*Poll, error)
 	Update(p *Poll) error
 }
@@ -39,6 +40,10 @@ func (s *Service) CreatePoll(chatID int64, eventDate time.Time) (*Poll, error) {
 
 func (s *Service) GetLatestActivePoll(chatID int64) (*Poll, error) {
 	return s.polls.GetLatestActive(chatID)
+}
+
+func (s *Service) GetLatestCancelledPoll(chatID int64) (*Poll, error) {
+	return s.polls.GetLatestCancelled(chatID)
 }
 
 func (s *Service) GetPollByTgPollID(tgPollID string) (*Poll, error) {
