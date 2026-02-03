@@ -164,6 +164,14 @@ func (b *Bot) handlePoll(c tele.Context) error {
 		}
 	}
 
+	// Helper to rollback poll on failure (deactivate so a new one can be created)
+	rollbackPoll := func() {
+		p.IsActive = false
+		if updateErr := b.pollService.UpdatePoll(p); updateErr != nil {
+			b.logger.Error("failed to rollback poll after error", "error", updateErr, "poll_id", p.ID)
+		}
+	}
+
 	// Send invitation message first (empty participants)
 	invitationData := &poll.InvitationData{
 		Poll:         p,
@@ -176,6 +184,7 @@ func (b *Bot) handlePoll(c tele.Context) error {
 
 	invitationHTML, err := RenderInvitation(invitationData)
 	if err != nil {
+		rollbackPoll()
 		return WrapUserError(MsgFailedRenderResults, err)
 	}
 
@@ -183,6 +192,7 @@ func (b *Bot) handlePoll(c tele.Context) error {
 		ParseMode: tele.ModeHTML,
 	})
 	if err != nil {
+		rollbackPoll()
 		return WrapUserError(MsgFailedSendResults, err)
 	}
 
@@ -192,8 +202,9 @@ func (b *Bot) handlePoll(c tele.Context) error {
 	// Render poll title from template
 	pollTitle, err := RenderPollTitle(eventDate)
 	if err != nil {
-		// Clean up invitation message on failure
+		// Clean up invitation message and rollback poll on failure
 		_ = b.bot.Delete(invitationMsg)
+		rollbackPoll()
 		return WrapUserError(MsgFailedRenderPollTitle, err)
 	}
 
@@ -212,8 +223,9 @@ func (b *Bot) handlePoll(c tele.Context) error {
 	// Send poll to the chat
 	sentMsg, err := b.bot.Send(c.Chat(), telePoll)
 	if err != nil {
-		// Clean up invitation message on failure
+		// Clean up invitation message and rollback poll on failure
 		_ = b.bot.Delete(invitationMsg)
+		rollbackPoll()
 		return WrapUserError(MsgFailedSendPoll, err)
 	}
 
