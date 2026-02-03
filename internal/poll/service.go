@@ -171,7 +171,7 @@ func (s *Service) RecordVote(v *Vote) error {
 type InvitationData struct {
 	Poll         *Poll
 	EventDate    time.Time
-	Participants []*Vote // 19:00 and 20:00 voters, ordered by vote time
+	Participants []*Vote // 19:00 and 20:00 voters, ordered by option index then vote time
 	ComingLater  []*Vote // 21:00+ voters
 	Undecided    []*Vote // "Decide later" voters
 	IsCancelled  bool
