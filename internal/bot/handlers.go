@@ -20,8 +20,12 @@ func (b *Bot) handlePollAnswer(c tele.Context) error {
 
 	// Find the poll
 	p, err := b.pollService.GetPollByTgPollID(answer.PollID)
-	if err != nil || p == nil {
-		return nil // Not our poll or error
+	if err != nil {
+		b.logger.Error("failed to lookup poll", "poll_id", answer.PollID, "error", err)
+		return nil
+	}
+	if p == nil {
+		return nil // Not our poll
 	}
 
 	// Determine option index (-1 if retracted)
