@@ -8,6 +8,8 @@ import (
 type Config struct {
 	TelegramToken string
 	DBPath        string
+	SentryDSN     string
+	DevMode       bool
 }
 
 func Load() (*Config, error) {
@@ -21,8 +23,13 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("DB_PATH is required")
 	}
 
+	sentryDSN := os.Getenv("SENTRY_DSN")
+	devMode := os.Getenv("DEV_MODE") == "true"
+
 	return &Config{
 		TelegramToken: token,
 		DBPath:        dbPath,
+		SentryDSN:     sentryDSN,
+		DevMode:       devMode,
 	}, nil
 }

@@ -2,11 +2,13 @@ package main
 
 import (
 	"log"
-	"log/slog"
-	"os"
+	"time"
+
+	"github.com/getsentry/sentry-go"
 
 	"nuclight.org/consigliere/internal/bot"
 	"nuclight.org/consigliere/internal/config"
+	"nuclight.org/consigliere/internal/logger"
 	"nuclight.org/consigliere/internal/poll"
 	"nuclight.org/consigliere/internal/storage"
 )
@@ -18,23 +20,46 @@ var (
 )
 
 func main() {
-	// Set up structured logger
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
-	}))
-
-	logger.Info("starting consigliere bot",
-		"version", Version,
-		"build_date", BuildDate,
-	)
-
-	// Load configuration
+	// Load configuration first (needed for Sentry DSN)
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	logger.Info("config loaded",
+	// Initialize Sentry if DSN is provided
+	sentryEnabled := false
+	if cfg.SentryDSN != "" {
+		env := "production"
+		if cfg.DevMode {
+			env = "development"
+		}
+		err = sentry.Init(sentry.ClientOptions{
+			ServerName:  "consigliere-bot",
+			Dsn:         cfg.SentryDSN,
+			Environment: env,
+		})
+		if err == nil {
+			sentryEnabled = true
+			defer sentry.Flush(2 * time.Second)
+		}
+	}
+
+	// Set up structured logger (with or without Sentry)
+	var appLog logger.Logger
+	if sentryEnabled {
+		appLog = logger.NewLoggerWithSentry()
+	} else {
+		appLog = logger.NewLogger()
+	}
+
+	appLog.Info("starting consigliere bot",
+		"version", Version,
+		"build_date", BuildDate,
+		"dev_mode", cfg.DevMode,
+		"sentry", sentryEnabled,
+	)
+
+	appLog.Info("config loaded",
 		"db_path", cfg.DBPath,
 	)
 
@@ -49,7 +74,7 @@ func main() {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}
 
-	logger.Info("database initialized")
+	appLog.Info("database initialized")
 
 	// Create repositories
 	pollRepo := storage.NewPollRepository(db)
@@ -59,7 +84,7 @@ func main() {
 	pollService := poll.NewService(pollRepo, voteRepo)
 
 	// Create and start bot
-	b, err := bot.New(cfg.TelegramToken, pollService, logger)
+	b, err := bot.New(cfg.TelegramToken, pollService, appLog)
 	if err != nil {
 		log.Fatalf("Failed to create bot: %v", err)
 	}
