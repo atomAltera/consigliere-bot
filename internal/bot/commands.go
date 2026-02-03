@@ -70,6 +70,15 @@ func nearestGameDay(from time.Time) time.Time {
 	return nextSat
 }
 
+// isPollDatePassed checks if the poll's event date is before today.
+// Returns true if the event date is in the past.
+func isPollDatePassed(eventDate time.Time) bool {
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	eventDay := time.Date(eventDate.Year(), eventDate.Month(), eventDate.Day(), 0, 0, 0, 0, eventDate.Location())
+	return eventDay.Before(today)
+}
+
 // parseEventDate parses the event date from command arguments.
 // Supports:
 // - No arguments: nearest Monday or Saturday
@@ -233,6 +242,11 @@ func (b *Bot) handleResults(c tele.Context) error {
 		return WrapUserError(MsgFailedGetPoll, err)
 	}
 
+	// Check if event date is in the past
+	if isPollDatePassed(p.EventDate) {
+		return UserErrorf(MsgPollDatePassed)
+	}
+
 	// Get invitation data
 	results, err := b.pollService.GetInvitationData(p.ID)
 	if err != nil {
@@ -299,6 +313,11 @@ func (b *Bot) handlePin(c tele.Context) error {
 		return WrapUserError(MsgFailedGetPoll, err)
 	}
 
+	// Check if event date is in the past
+	if isPollDatePassed(p.EventDate) {
+		return UserErrorf(MsgPollDatePassed)
+	}
+
 	if p.TgMessageID == 0 {
 		return UserErrorf(MsgPollMessageMissing)
 	}
@@ -336,8 +355,22 @@ func (b *Bot) handleCancel(c tele.Context) error {
 		"chat_id", c.Chat().ID,
 	)
 
+	// Get active poll to check date first
+	p, err := b.pollService.GetActivePoll(c.Chat().ID)
+	if err != nil {
+		if errors.Is(err, poll.ErrNoActivePoll) {
+			return UserErrorf(MsgNoActivePoll)
+		}
+		return WrapUserError(MsgFailedGetPoll, err)
+	}
+
+	// Check if event date is in the past
+	if isPollDatePassed(p.EventDate) {
+		return UserErrorf(MsgPollDatePassed)
+	}
+
 	// Cancel poll via service (marks as inactive)
-	p, err := b.pollService.CancelPoll(c.Chat().ID)
+	p, err = b.pollService.CancelPoll(c.Chat().ID)
 	if err != nil {
 		if errors.Is(err, poll.ErrNoActivePoll) {
 			return UserErrorf(MsgNoActivePoll)
@@ -547,6 +580,11 @@ func (b *Bot) handleVote(c tele.Context) error {
 		return WrapUserError(MsgFailedGetPoll, err)
 	}
 
+	// Check if event date is in the past
+	if isPollDatePassed(p.EventDate) {
+		return UserErrorf(MsgPollDatePassed)
+	}
+
 	// Create manual vote with synthetic user ID
 	v := &poll.Vote{
 		PollID:        p.ID,
@@ -605,10 +643,7 @@ func (b *Bot) handleCall(c tele.Context) error {
 	}
 
 	// Check if event date is in the past
-	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	eventDay := time.Date(p.EventDate.Year(), p.EventDate.Month(), p.EventDate.Day(), 0, 0, 0, 0, p.EventDate.Location())
-	if eventDay.Before(today) {
+	if isPollDatePassed(p.EventDate) {
 		return UserErrorf(MsgPollDatePassed)
 	}
 
