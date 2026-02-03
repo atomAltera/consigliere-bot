@@ -15,6 +15,7 @@ var templates embed.FS
 var invitationTmpl *template.Template
 var pollTitleTmpl *template.Template
 var cancelTmpl *template.Template
+var restoreTmpl *template.Template
 var callTmpl *template.Template
 
 // Russian weekday names
@@ -83,6 +84,10 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+	restoreTmpl, err = template.New("restore.html").Funcs(templateFuncs).ParseFS(templates, "templates/restore.html")
+	if err != nil {
+		panic(err)
+	}
 	callTmpl, err = template.New("call.html").Funcs(templateFuncs).ParseFS(templates, "templates/call.html")
 	if err != nil {
 		panic(err)
@@ -117,6 +122,21 @@ type CancelData struct {
 func RenderCancelMessage(data *CancelData) (string, error) {
 	var buf bytes.Buffer
 	if err := cancelTmpl.Execute(&buf, data); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
+
+// RestoreData holds data for the restore message template
+type RestoreData struct {
+	EventDate time.Time
+	Mentions  string // space-separated @mentions
+}
+
+// RenderRestoreMessage renders the restore notification message.
+func RenderRestoreMessage(data *RestoreData) (string, error) {
+	var buf bytes.Buffer
+	if err := restoreTmpl.Execute(&buf, data); err != nil {
 		return "", err
 	}
 	return buf.String(), nil

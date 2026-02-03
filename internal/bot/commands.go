@@ -453,7 +453,7 @@ func (b *Bot) handleRestore(c tele.Context) error {
 		}
 	}
 
-	// Delete cancellation notification message and clear ID
+	// Delete cancellation notification message
 	if p.TgCancelMessageID != 0 {
 		chat := &tele.Chat{ID: p.TgChatID}
 		msg := &tele.Message{ID: p.TgCancelMessageID, Chat: chat}
@@ -461,9 +461,46 @@ func (b *Bot) handleRestore(c tele.Context) error {
 			b.logger.Warn("failed to delete cancellation message", "error", err)
 		}
 		p.TgCancelMessageID = 0
-		if err := b.pollService.UpdatePoll(p); err != nil {
-			b.logger.Warn("failed to clear cancel message ID", "error", err)
+	}
+
+	// Get attending usernames for mentions
+	usernames, err := b.pollService.GetAttendingUsernames(p.ID)
+	if err != nil {
+		b.logger.Warn("failed to get attending usernames", "error", err)
+	}
+
+	// Build mentions string
+	var mentions string
+	if len(usernames) > 0 {
+		mentionList := make([]string, len(usernames))
+		for i, u := range usernames {
+			mentionList[i] = "@" + u
 		}
+		mentions = strings.Join(mentionList, " ")
+	}
+
+	// Render and send restore message
+	html, err := RenderRestoreMessage(&RestoreData{
+		EventDate: p.EventDate,
+		Mentions:  mentions,
+	})
+	if err != nil {
+		return WrapUserError(MsgFailedRenderRestore, err)
+	}
+
+	restoreMsg, err := b.bot.Send(c.Chat(), html, tele.ModeHTML)
+	if err != nil {
+		return WrapUserError(MsgFailedSendRestore, err)
+	}
+
+	// Pin the restore message
+	if err := c.Bot().Pin(restoreMsg); err != nil {
+		b.logger.Warn("failed to pin restore message", "error", err)
+	}
+
+	// Save poll (clear cancel message ID)
+	if err := b.pollService.UpdatePoll(p); err != nil {
+		b.logger.Warn("failed to update poll after restore", "error", err)
 	}
 
 	return nil

@@ -33,6 +33,8 @@ const (
 	MsgFailedSavePollStatus     = "Не удалось сохранить статус опроса"
 	MsgFailedRenderCancellation = "Не удалось сформировать сообщение об отмене"
 	MsgFailedSendCancellation   = "Не удалось отправить сообщение об отмене"
+	MsgFailedRenderRestore      = "Не удалось сформировать сообщение о восстановлении"
+	MsgFailedSendRestore        = "Не удалось отправить сообщение о восстановлении"
 	MsgFailedRecordVote         = "Не удалось записать голос"
 	MsgFailedGetUndecided       = "Не удалось получить список неопределившихся"
 	MsgFailedRenderCall         = "Не удалось сформировать сообщение"
