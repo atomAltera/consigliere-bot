@@ -25,12 +25,29 @@ func NewService(polls PollRepository, votes VoteRepository) *Service {
 }
 
 // CreatePoll creates a new poll for the given chat and event date.
-// Returns ErrPollExists if an active poll already exists in this chat.
-func (s *Service) CreatePoll(tgChatID int64, eventDate time.Time) (*Poll, error) {
+// Returns ErrPollExists if an active poll already exists in this chat with a future event date.
+// If an active poll exists but its event date is in the past, it will be deactivated and
+// the new poll created. The replaced poll is returned in CreatePollResult.ReplacedPoll.
+func (s *Service) CreatePoll(tgChatID int64, eventDate time.Time) (*CreatePollResult, error) {
 	// Check if there's already an active poll
 	existing, err := s.polls.GetLatestActive(tgChatID)
 	if err == nil && existing != nil {
-		return nil, ErrPollExists
+		// Check if existing poll's event date is in the past
+		now := time.Now()
+		today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+		eventDay := time.Date(existing.EventDate.Year(), existing.EventDate.Month(), existing.EventDate.Day(), 0, 0, 0, 0, existing.EventDate.Location())
+
+		if !eventDay.Before(today) {
+			// Event date is today or future - don't allow new poll
+			return nil, ErrPollExists
+		}
+
+		// Event date is in the past - deactivate old poll
+		existing.IsActive = false
+		existing.IsPinned = false
+		if err := s.polls.Update(existing); err != nil {
+			return nil, err
+		}
 	}
 
 	p := &Poll{
@@ -44,7 +61,14 @@ func (s *Service) CreatePoll(tgChatID int64, eventDate time.Time) (*Poll, error)
 	if err := s.polls.Create(p); err != nil {
 		return nil, err
 	}
-	return p, nil
+
+	result := &CreatePollResult{
+		Poll: p,
+	}
+	if existing != nil {
+		result.ReplacedPoll = existing
+	}
+	return result, nil
 }
 
 // GetActivePoll returns the latest active poll for the given chat.

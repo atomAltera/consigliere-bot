@@ -80,14 +80,14 @@ func TestService_CreatePoll(t *testing.T) {
 	voteRepo := &mockVoteRepo{}
 	svc := NewService(pollRepo, voteRepo)
 
-	p, err := svc.CreatePoll(-123456, time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC))
+	result, err := svc.CreatePoll(-123456, time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC))
 	if err != nil {
 		t.Fatalf("CreatePoll failed: %v", err)
 	}
-	if p.ID == 0 {
+	if result.Poll.ID == 0 {
 		t.Error("expected poll to have ID")
 	}
-	if !p.IsActive {
+	if !result.Poll.IsActive {
 		t.Error("expected poll to be active")
 	}
 }
@@ -97,7 +97,8 @@ func TestService_GetInvitationData(t *testing.T) {
 	voteRepo := &mockVoteRepo{}
 	svc := NewService(pollRepo, voteRepo)
 
-	p, _ := svc.CreatePoll(-123456, time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC))
+	result, _ := svc.CreatePoll(-123456, time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC))
+	p := result.Poll
 
 	// Add votes: 19:00, 20:00, 21:00+, decide later
 	now := time.Now()

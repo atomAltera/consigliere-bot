@@ -134,12 +134,22 @@ func (b *Bot) handlePoll(c tele.Context) error {
 	)
 
 	// Create poll in database (service checks for existing poll)
-	p, err := b.pollService.CreatePoll(c.Chat().ID, eventDate)
+	result, err := b.pollService.CreatePoll(c.Chat().ID, eventDate)
 	if err != nil {
 		if errors.Is(err, poll.ErrPollExists) {
 			return UserErrorf(MsgPollAlreadyExists)
 		}
 		return WrapUserError(MsgFailedCreatePoll, err)
+	}
+	p := result.Poll
+
+	// Unpin old poll message if it was replaced and pinned
+	if result.ReplacedPoll != nil && result.ReplacedPoll.TgMessageID != 0 {
+		chat := &tele.Chat{ID: c.Chat().ID}
+		if err := c.Bot().Unpin(chat, result.ReplacedPoll.TgMessageID); err != nil {
+			// Non-critical: old message may have been deleted, just log
+			b.logger.Warn("failed to unpin replaced poll", "error", err)
+		}
 	}
 
 	// Send invitation message first (empty participants)
