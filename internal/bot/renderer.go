@@ -66,28 +66,30 @@ var templateFuncs = template.FuncMap{
 	"ruDateShort": formatDateRussianShort,
 }
 
-func init() {
+// InitTemplates initializes all templates. Must be called before using any Render* functions.
+func InitTemplates() error {
 	var err error
 	invitationTmpl, err = template.New("invitation.html").Funcs(templateFuncs).ParseFS(templates, "templates/invitation.html")
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("parse invitation template: %w", err)
 	}
 	pollTitleTmpl, err = template.New("poll_title.txt").Funcs(templateFuncs).ParseFS(templates, "templates/poll_title.txt")
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("parse poll title template: %w", err)
 	}
 	cancelTmpl, err = template.New("cancel.html").Funcs(templateFuncs).ParseFS(templates, "templates/cancel.html")
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("parse cancel template: %w", err)
 	}
 	restoreTmpl, err = template.New("restore.html").Funcs(templateFuncs).ParseFS(templates, "templates/restore.html")
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("parse restore template: %w", err)
 	}
 	callTmpl, err = template.New("call.html").Funcs(templateFuncs).ParseFS(templates, "templates/call.html")
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("parse call template: %w", err)
 	}
+	return nil
 }
 
 // RenderPollTitle renders the poll title for the given event date.

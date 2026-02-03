@@ -79,6 +79,12 @@ func main() {
 
 	appLog.Info("database initialized")
 
+	// Initialize templates
+	if err := bot.InitTemplates(); err != nil {
+		appLog.Error("failed to initialize templates", "error", err)
+		os.Exit(1)
+	}
+
 	// Create repositories
 	pollRepo := storage.NewPollRepository(db)
 	voteRepo := storage.NewVoteRepository(db)
