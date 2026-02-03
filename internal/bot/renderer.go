@@ -3,6 +3,7 @@ package bot
 import (
 	"bytes"
 	"embed"
+	"fmt"
 	"html/template"
 	"time"
 
@@ -49,20 +50,15 @@ var russianMonths = []string{
 // Example: "понедельник, 15 января"
 func FormatDateRussian(t time.Time) string {
 	weekday := russianWeekdays[t.Weekday()]
-	day := t.Day()
 	month := russianMonths[t.Month()-1]
-	return weekday + ", " + string(rune('0'+day/10)) + string(rune('0'+day%10)) + " " + month
+	return fmt.Sprintf("%s, %d %s", weekday, t.Day(), month)
 }
 
 // formatDateRussianShort formats a date in short Russian format
 // Example: "15 января"
 func formatDateRussianShort(t time.Time) string {
-	day := t.Day()
 	month := russianMonths[t.Month()-1]
-	if day < 10 {
-		return string(rune('0'+day)) + " " + month
-	}
-	return string(rune('0'+day/10)) + string(rune('0'+day%10)) + " " + month
+	return fmt.Sprintf("%d %s", t.Day(), month)
 }
 
 var templateFuncs = template.FuncMap{
