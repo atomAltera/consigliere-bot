@@ -20,16 +20,23 @@ go run ./cmd/consigliere                          # Run directly
 - Package: `nuclight.org/consigliere`
 - Go version: 1.24.5
 
-## Key Requirements (from task.md)
+## Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `TELEGRAM_BOT_API_KEY` | Yes | Telegram bot token from @BotFather |
+| `DB_PATH` | Yes | Path to SQLite database file |
+| `SENTRY_DSN` | No | Sentry DSN for error tracking |
+| `DEV_MODE` | No | Set to `true` for development environment |
+
+## Key Features
 
 - Bot posts polls for Monday/Saturday events with time slot options (19:00, 20:00, 21:00+, undecided, not coming)
 - Only chat admins can use bot commands
-- Commands should be deleted after execution
-- Track voting history in database
-- Commands: `/poll <day>`, `/results`, `/cancel`, `/pin`, `/restore`, `/vote`, `/help`
+- Commands are deleted after execution
+- Voting history tracked in SQLite database
 - Results message auto-updates when votes change
-- Minimum 11 participants required; cancel event if not met by 5pm
-- commit after each change
+- Commands: `/poll`, `/results`, `/cancel`, `/pin`, `/restore`, `/vote`, `/help`
 
 ## Important
 
