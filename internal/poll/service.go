@@ -31,7 +31,10 @@ func NewService(polls PollRepository, votes VoteRepository) *Service {
 func (s *Service) CreatePoll(tgChatID int64, eventDate time.Time) (*CreatePollResult, error) {
 	// Check if there's already an active poll
 	existing, err := s.polls.GetLatestActive(tgChatID)
-	if err == nil && existing != nil {
+	if err != nil {
+		return nil, err
+	}
+	if existing != nil {
 		// Check if existing poll's event date is in the past
 		now := time.Now()
 		today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
