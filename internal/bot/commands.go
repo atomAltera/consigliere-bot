@@ -99,8 +99,8 @@ func parseEventDate(args []string) (time.Time, error) {
 		return nextWeekday(today, weekday), nil
 	}
 
-	// Try parsing as YYYY-MM-DD
-	eventDate, err := time.Parse("2006-01-02", args[0])
+	// Try parsing as YYYY-MM-DD (use local timezone for consistency with day name parsing)
+	eventDate, err := time.ParseInLocation("2006-01-02", args[0], time.Local)
 	if err != nil {
 		return time.Time{}, fmt.Errorf("invalid date format. Use day name (e.g., monday, sat) or YYYY-MM-DD")
 	}
