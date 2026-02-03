@@ -10,6 +10,9 @@ import (
 	"nuclight.org/consigliere/internal/poll"
 )
 
+// TelegramMaxMessageLength is the maximum length of a Telegram message (4096 chars)
+const TelegramMaxMessageLength = 4096
+
 //go:embed templates/*
 var templates embed.FS
 
@@ -102,12 +105,65 @@ func RenderPollTitle(eventDate time.Time) (string, error) {
 }
 
 // RenderInvitation renders the invitation message for the given data.
+// If the message exceeds Telegram's limit, participant lists are truncated.
 func RenderInvitation(data *poll.InvitationData) (string, error) {
 	var buf bytes.Buffer
 	if err := invitationTmpl.Execute(&buf, data); err != nil {
 		return "", err
 	}
-	return buf.String(), nil
+
+	result := buf.String()
+	if len(result) <= TelegramMaxMessageLength {
+		return result, nil
+	}
+
+	// Message too long - truncate participant lists progressively
+	// Make a copy to avoid modifying the original data
+	truncatedData := &poll.InvitationData{
+		Poll:        data.Poll,
+		EventDate:   data.EventDate,
+		IsCancelled: data.IsCancelled,
+	}
+
+	// Copy slices
+	truncatedData.Participants = append([]*poll.Vote{}, data.Participants...)
+	truncatedData.ComingLater = append([]*poll.Vote{}, data.ComingLater...)
+	truncatedData.Undecided = append([]*poll.Vote{}, data.Undecided...)
+
+	// Truncate until message fits, removing from the longest list first
+	for len(result) > TelegramMaxMessageLength {
+		// Find the longest list and remove one item
+		maxLen := 0
+		var longest *[]*poll.Vote
+		if len(truncatedData.Participants) > maxLen {
+			maxLen = len(truncatedData.Participants)
+			longest = &truncatedData.Participants
+		}
+		if len(truncatedData.ComingLater) > maxLen {
+			maxLen = len(truncatedData.ComingLater)
+			longest = &truncatedData.ComingLater
+		}
+		if len(truncatedData.Undecided) > maxLen {
+			longest = &truncatedData.Undecided
+		}
+
+		if longest == nil || len(*longest) == 0 {
+			// Nothing left to truncate, return what we have
+			break
+		}
+
+		// Remove the last item from the longest list
+		*longest = (*longest)[:len(*longest)-1]
+
+		// Re-render
+		buf.Reset()
+		if err := invitationTmpl.Execute(&buf, truncatedData); err != nil {
+			return "", err
+		}
+		result = buf.String()
+	}
+
+	return result, nil
 }
 
 // CancelData holds data for the cancel message template
