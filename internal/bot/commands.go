@@ -547,6 +547,10 @@ func (b *Bot) handleHelp(c tele.Context) error {
 		"chat_id", c.Chat().ID,
 	)
 
-	_, err := b.SendTemporary(c.Chat(), HelpMessage(), 30*time.Second, tele.ModeHTML)
+	helpText, err := HelpMessage()
+	if err != nil {
+		return fmt.Errorf("read help template: %w", err)
+	}
+	_, err = b.SendTemporary(c.Chat(), helpText, 30*time.Second, tele.ModeHTML)
 	return err
 }

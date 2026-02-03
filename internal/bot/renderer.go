@@ -118,7 +118,10 @@ func RenderCancelMessage(data *CancelData) (string, error) {
 }
 
 // HelpMessage returns the help message HTML.
-func HelpMessage() string {
-	content, _ := templates.ReadFile("templates/help.html")
-	return string(content)
+func HelpMessage() (string, error) {
+	content, err := templates.ReadFile("templates/help.html")
+	if err != nil {
+		return "", err
+	}
+	return string(content), nil
 }
