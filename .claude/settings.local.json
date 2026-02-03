@@ -9,7 +9,9 @@
       "mcp__brave__brave_web_search",
       "Bash(go test:*)",
       "Bash(go build:*)",
-      "Bash(git:*)"
+      "Bash(git:*)",
+      "Bash(wc:*)",
+      "Bash(sort:*)"
     ]
   }
 }
