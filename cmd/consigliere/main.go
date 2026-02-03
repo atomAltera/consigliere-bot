@@ -3,6 +3,8 @@ package main
 import (
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/getsentry/sentry-go"
@@ -102,5 +104,17 @@ func main() {
 	b.RegisterCommands()
 	b.RegisterHandlers()
 
+	// Set up graceful shutdown
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		sig := <-sigChan
+		appLog.Info("received shutdown signal", "signal", sig.String())
+		b.Stop()
+	}()
+
+	appLog.Info("bot started, press Ctrl+C to stop")
 	b.Start()
+	appLog.Info("bot stopped")
 }
