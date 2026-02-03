@@ -25,7 +25,13 @@ func (b *Bot) AdminOnly() tele.MiddlewareFunc {
 			}
 
 			if !isAdmin {
-				return nil // Silently ignore non-admin commands
+				b.logger.Info("unauthorized command attempt",
+					"user_id", c.Sender().ID,
+					"username", c.Sender().Username,
+					"chat_id", c.Chat().ID,
+					"command", c.Text(),
+				)
+				return nil // Ignore non-admin commands
 			}
 
 			return next(c)
