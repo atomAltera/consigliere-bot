@@ -2,37 +2,30 @@ package storage
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
-	"strconv"
-	"strings"
 	"time"
 
 	"nuclight.org/consigliere/internal/poll"
 )
 
-// optionsToString converts []OptionKind to comma-separated string
+// optionsToString converts []OptionKind to JSON string
 func optionsToString(opts []poll.OptionKind) string {
 	if len(opts) == 0 {
-		return "0,1,2,3,4" // default
+		opts = poll.DefaultOptions()
 	}
-	strs := make([]string, len(opts))
-	for i, o := range opts {
-		strs[i] = strconv.Itoa(int(o))
-	}
-	return strings.Join(strs, ",")
+	data, _ := json.Marshal(opts)
+	return string(data)
 }
 
-// parseOptions converts comma-separated string to []OptionKind
+// parseOptions converts JSON string to []OptionKind
 func parseOptions(s string) []poll.OptionKind {
 	if s == "" {
 		return poll.DefaultOptions()
 	}
-	parts := strings.Split(s, ",")
-	opts := make([]poll.OptionKind, 0, len(parts))
-	for _, p := range parts {
-		if v, err := strconv.Atoi(strings.TrimSpace(p)); err == nil {
-			opts = append(opts, poll.OptionKind(v))
-		}
+	var opts []poll.OptionKind
+	if err := json.Unmarshal([]byte(s), &opts); err != nil {
+		return poll.DefaultOptions()
 	}
 	if len(opts) == 0 {
 		return poll.DefaultOptions()
