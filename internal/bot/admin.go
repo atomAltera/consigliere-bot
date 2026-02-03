@@ -1,10 +1,62 @@
 package bot
 
 import (
+	"sync"
 	"time"
 
+	"golang.org/x/time/rate"
 	tele "gopkg.in/telebot.v4"
 )
+
+// Rate limiting constants
+const (
+	RateLimitPerSecond = 1   // requests per second per user
+	RateLimitBurst     = 3   // burst allowance
+)
+
+// rateLimiter manages per-user rate limiters
+type rateLimiter struct {
+	mu       sync.Mutex
+	limiters map[int64]*rate.Limiter
+}
+
+func newRateLimiter() *rateLimiter {
+	return &rateLimiter{
+		limiters: make(map[int64]*rate.Limiter),
+	}
+}
+
+func (r *rateLimiter) getLimiter(userID int64) *rate.Limiter {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	limiter, exists := r.limiters[userID]
+	if !exists {
+		limiter = rate.NewLimiter(rate.Limit(RateLimitPerSecond), RateLimitBurst)
+		r.limiters[userID] = limiter
+	}
+	return limiter
+}
+
+// RateLimit is a middleware that limits command frequency per user.
+// Returns silently if rate limit is exceeded.
+func (b *Bot) RateLimit() tele.MiddlewareFunc {
+	return func(next tele.HandlerFunc) tele.HandlerFunc {
+		return func(c tele.Context) error {
+			limiter := b.rateLimiter.getLimiter(c.Sender().ID)
+			if !limiter.Allow() {
+				b.logger.Warn("rate limit exceeded",
+					"user_id", c.Sender().ID,
+					"username", c.Sender().Username,
+					"chat_id", c.Chat().ID,
+					"command", c.Text(),
+				)
+				return nil // Silently drop rate-limited requests
+			}
+			return next(c)
+		}
+	}
+}
 
 func (b *Bot) isAdmin(chatID int64, userID int64) (bool, error) {
 	chat := &tele.Chat{ID: chatID}

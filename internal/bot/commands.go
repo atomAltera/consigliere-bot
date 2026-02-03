@@ -110,10 +110,12 @@ func parseEventDate(args []string) (time.Time, error) {
 
 // RegisterCommands sets up all bot commands with admin-only middleware
 // Middleware order matters: HandleErrors must be outermost to catch all errors,
+// RateLimit should run early to drop excessive requests,
 // DeleteCommand should run before AdminOnly so commands are always deleted.
 func (b *Bot) RegisterCommands() {
 	adminGroup := b.bot.Group()
 	adminGroup.Use(b.HandleErrors())
+	adminGroup.Use(b.RateLimit())
 	adminGroup.Use(b.DeleteCommand())
 	adminGroup.Use(b.AdminOnly())
 

@@ -16,6 +16,7 @@ type Bot struct {
 	bot         *tele.Bot
 	pollService *poll.Service
 	logger      *slog.Logger
+	rateLimiter *rateLimiter
 }
 
 func New(token string, pollService *poll.Service, logger *slog.Logger) (*Bot, error) {
@@ -33,6 +34,7 @@ func New(token string, pollService *poll.Service, logger *slog.Logger) (*Bot, er
 		bot:         b,
 		pollService: pollService,
 		logger:      logger,
+		rateLimiter: newRateLimiter(),
 	}, nil
 }
 
