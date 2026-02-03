@@ -26,7 +26,11 @@ go run ./cmd/consigliere                          # Run directly
 - Only chat admins can use bot commands
 - Commands should be deleted after execution
 - Track voting history in database
-- Commands: `/poll <day>`, `/results`, `/cancel`, `/pin`
+- Commands: `/poll <day>`, `/results`, `/cancel`, `/pin`, `/restore`, `/vote`, `/help`
 - Results message auto-updates when votes change
 - Minimum 11 participants required; cancel event if not met by 5pm
 - commit after each change
+
+## Important
+
+- When adding, changing, or removing bot commands, always update the `/help` template at `internal/bot/templates/help.html`
