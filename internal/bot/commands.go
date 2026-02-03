@@ -112,6 +112,7 @@ func (b *Bot) RegisterCommands() {
 	adminGroup.Handle("/cancel", b.handleCancel)
 	adminGroup.Handle("/restore", b.handleRestore)
 	adminGroup.Handle("/vote", b.handleVote)
+	adminGroup.Handle("/call", b.handleCall)
 	adminGroup.Handle("/help", b.handleHelp)
 }
 
@@ -547,6 +548,64 @@ func (b *Bot) handleVote(c tele.Context) error {
 
 	_, err = b.SendTemporary(c.Chat(), fmt.Sprintf(MsgFmtVoteRecorded, username, OptionLabel(poll.OptionKind(optionIndex))), 0)
 	return err
+}
+
+// handleCall sends a message mentioning all undecided voters
+func (b *Bot) handleCall(c tele.Context) error {
+	b.logger.Info("command /call",
+		"user_id", c.Sender().ID,
+		"username", c.Sender().Username,
+		"chat_id", c.Chat().ID,
+	)
+
+	// Get active poll
+	p, err := b.pollService.GetActivePoll(c.Chat().ID)
+	if err != nil {
+		if errors.Is(err, poll.ErrNoActivePoll) {
+			return UserErrorf(MsgNoActivePoll)
+		}
+		return WrapUserError(MsgFailedGetPoll, err)
+	}
+
+	// Check if event date is in the past
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	eventDay := time.Date(p.EventDate.Year(), p.EventDate.Month(), p.EventDate.Day(), 0, 0, 0, 0, p.EventDate.Location())
+	if eventDay.Before(today) {
+		return UserErrorf(MsgPollDatePassed)
+	}
+
+	// Get undecided usernames
+	usernames, err := b.pollService.GetUndecidedUsernames(p.ID)
+	if err != nil {
+		return WrapUserError(MsgFailedGetUndecided, err)
+	}
+
+	if len(usernames) == 0 {
+		return UserErrorf(MsgNoUndecidedVoters)
+	}
+
+	// Build mentions string
+	mentions := make([]string, len(usernames))
+	for i, u := range usernames {
+		mentions[i] = "@" + u
+	}
+
+	// Render and send call message
+	html, err := RenderCallMessage(&CallData{
+		EventDate: p.EventDate,
+		Mentions:  strings.Join(mentions, " "),
+	})
+	if err != nil {
+		return WrapUserError(MsgFailedRenderCall, err)
+	}
+
+	_, err = b.bot.Send(c.Chat(), html, tele.ModeHTML)
+	if err != nil {
+		return WrapUserError(MsgFailedSendCall, err)
+	}
+
+	return nil
 }
 
 // handleHelp shows the help message with all available commands

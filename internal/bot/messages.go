@@ -11,6 +11,7 @@ const (
 	MsgInvalidUsername    = "Неверное имя пользователя"
 	MsgVoteUsage          = "Использование: /vote @имя <опция 1-5>\nОпции: 1=19:00, 2=20:00, 3=21:00+, 4=решу позже, 5=не приду"
 	MsgInvalidVoteOption  = "Неверная опция. Используйте 1-5:\n1=19:00, 2=20:00, 3=21:00+, 4=решу позже, 5=не приду"
+	MsgNoUndecidedVoters  = "Нет участников, которые ещё не определились"
 )
 
 // System error messages (internal errors, hide details from user)
@@ -33,6 +34,9 @@ const (
 	MsgFailedRenderCancellation = "Не удалось сформировать сообщение об отмене"
 	MsgFailedSendCancellation   = "Не удалось отправить сообщение об отмене"
 	MsgFailedRecordVote         = "Не удалось записать голос"
+	MsgFailedGetUndecided       = "Не удалось получить список неопределившихся"
+	MsgFailedRenderCall         = "Не удалось сформировать сообщение"
+	MsgFailedSendCall           = "Не удалось отправить сообщение"
 )
 
 // Format strings for dynamic messages

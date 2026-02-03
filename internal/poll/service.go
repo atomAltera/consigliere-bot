@@ -191,6 +191,23 @@ func (s *Service) GetAttendingUsernames(pollID int64) ([]string, error) {
 	return usernames, nil
 }
 
+// GetUndecidedUsernames returns usernames of all participants who voted "decide later".
+// Returns empty slice if no one is undecided.
+func (s *Service) GetUndecidedUsernames(pollID int64) ([]string, error) {
+	votes, err := s.votes.GetCurrentVotes(pollID)
+	if err != nil {
+		return nil, err
+	}
+
+	var usernames []string
+	for _, v := range votes {
+		if OptionKind(v.TgOptionIndex) == OptionDecideLater && v.TgUsername != "" {
+			usernames = append(usernames, v.TgUsername)
+		}
+	}
+	return usernames, nil
+}
+
 // GetInvitationData returns results formatted for the invitation message
 func (s *Service) GetInvitationData(pollID int64) (*InvitationData, error) {
 	votes, err := s.votes.GetCurrentVotes(pollID)

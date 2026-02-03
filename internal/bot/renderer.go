@@ -15,6 +15,7 @@ var templates embed.FS
 var invitationTmpl *template.Template
 var pollTitleTmpl *template.Template
 var cancelTmpl *template.Template
+var callTmpl *template.Template
 
 // Russian weekday names
 var russianWeekdays = []string{
@@ -82,6 +83,10 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+	callTmpl, err = template.New("call.html").Funcs(templateFuncs).ParseFS(templates, "templates/call.html")
+	if err != nil {
+		panic(err)
+	}
 }
 
 // RenderPollTitle renders the poll title for the given event date.
@@ -112,6 +117,21 @@ type CancelData struct {
 func RenderCancelMessage(data *CancelData) (string, error) {
 	var buf bytes.Buffer
 	if err := cancelTmpl.Execute(&buf, data); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
+
+// CallData holds data for the call message template
+type CallData struct {
+	EventDate time.Time
+	Mentions  string // space-separated @mentions
+}
+
+// RenderCallMessage renders the call message for undecided voters.
+func RenderCallMessage(data *CallData) (string, error) {
+	var buf bytes.Buffer
+	if err := callTmpl.Execute(&buf, data); err != nil {
 		return "", err
 	}
 	return buf.String(), nil

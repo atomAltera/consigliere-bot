@@ -36,7 +36,7 @@ go run ./cmd/consigliere                          # Run directly
 - Commands are deleted after execution
 - Voting history tracked in SQLite database
 - Results message auto-updates when votes change
-- Commands: `/poll`, `/results`, `/cancel`, `/pin`, `/restore`, `/vote`, `/help`
+- Commands: `/poll`, `/results`, `/cancel`, `/pin`, `/restore`, `/vote`, `/call`, `/help`
 
 ## Important
 
