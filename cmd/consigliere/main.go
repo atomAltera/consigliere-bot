@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 	"time"
 
 	"github.com/getsentry/sentry-go"
@@ -66,12 +67,14 @@ func main() {
 	// Initialize database
 	db, err := storage.NewDB(cfg.DBPath)
 	if err != nil {
-		log.Fatalf("Failed to open database: %v", err)
+		appLog.Error("failed to open database", "error", err)
+		os.Exit(1)
 	}
 	defer db.Close()
 
 	if err := db.Migrate(); err != nil {
-		log.Fatalf("Failed to migrate database: %v", err)
+		appLog.Error("failed to migrate database", "error", err)
+		os.Exit(1)
 	}
 
 	appLog.Info("database initialized")
@@ -86,7 +89,8 @@ func main() {
 	// Create and start bot
 	b, err := bot.New(cfg.TelegramToken, pollService, appLog)
 	if err != nil {
-		log.Fatalf("Failed to create bot: %v", err)
+		appLog.Error("failed to create bot", "error", err)
+		os.Exit(1)
 	}
 
 	b.RegisterCommands()
