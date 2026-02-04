@@ -133,7 +133,7 @@ func (b *Bot) HandleErrors() tele.MiddlewareFunc {
 
 			// Send user-friendly message (temporary)
 			userMsg := GetUserMessage(err)
-			msg, sendErr := b.bot.Send(c.Chat(), userMsg)
+			msg, sendErr := b.SendWithRetry(c.Chat(), userMsg)
 			if sendErr != nil {
 				b.logger.Error("failed to send error message to user",
 					"error", sendErr,

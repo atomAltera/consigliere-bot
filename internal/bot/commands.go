@@ -190,7 +190,7 @@ func (b *Bot) handlePoll(c tele.Context) error {
 		return WrapUserError(MsgFailedRenderResults, err)
 	}
 
-	invitationMsg, err := b.bot.Send(c.Chat(), invitationHTML, &tele.SendOptions{
+	invitationMsg, err := b.SendWithRetry(c.Chat(), invitationHTML, &tele.SendOptions{
 		ParseMode: tele.ModeHTML,
 	})
 	if err != nil {
@@ -223,7 +223,7 @@ func (b *Bot) handlePoll(c tele.Context) error {
 	telePoll.AddOptions(pollOptions...)
 
 	// Send poll to the chat
-	sentMsg, err := b.bot.Send(c.Chat(), telePoll)
+	sentMsg, err := b.SendWithRetry(c.Chat(), telePoll)
 	if err != nil {
 		// Clean up invitation message and rollback poll on failure
 		_ = b.bot.Delete(invitationMsg)
@@ -537,7 +537,7 @@ func (b *Bot) handleRestore(c tele.Context) error {
 		return WrapUserError(MsgFailedRenderRestore, err)
 	}
 
-	restoreMsg, err := b.bot.Send(c.Chat(), html, tele.ModeHTML)
+	restoreMsg, err := b.SendWithRetry(c.Chat(), html, tele.ModeHTML)
 	if err != nil {
 		return WrapUserError(MsgFailedSendRestore, err)
 	}
@@ -688,7 +688,7 @@ func (b *Bot) handleCall(c tele.Context) error {
 		return WrapUserError(MsgFailedRenderCall, err)
 	}
 
-	_, err = b.bot.Send(c.Chat(), html, tele.ModeHTML)
+	_, err = b.SendWithRetry(c.Chat(), html, tele.ModeHTML)
 	if err != nil {
 		return WrapUserError(MsgFailedSendCall, err)
 	}

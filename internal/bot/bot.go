@@ -12,6 +12,12 @@ import (
 // DefaultTempMessageDelay is the default delay before deleting temporary messages.
 const DefaultTempMessageDelay = 5 * time.Second
 
+// Retry configuration
+const (
+	MaxRetries        = 3
+	InitialRetryDelay = 100 * time.Millisecond
+)
+
 type Bot struct {
 	bot         *tele.Bot
 	pollService *poll.Service
@@ -59,10 +65,37 @@ func (b *Bot) Logger() *slog.Logger {
 	return b.logger
 }
 
+// SendWithRetry sends a message with exponential backoff retry on failure.
+func (b *Bot) SendWithRetry(to tele.Recipient, what any, opts ...any) (*tele.Message, error) {
+	var msg *tele.Message
+	var err error
+	delay := InitialRetryDelay
+
+	for attempt := 0; attempt <= MaxRetries; attempt++ {
+		msg, err = b.bot.Send(to, what, opts...)
+		if err == nil {
+			return msg, nil
+		}
+
+		if attempt < MaxRetries {
+			b.logger.Warn("telegram send failed, retrying",
+				"error", err,
+				"attempt", attempt+1,
+				"max_retries", MaxRetries,
+				"next_delay", delay,
+			)
+			time.Sleep(delay)
+			delay *= 2 // Exponential backoff
+		}
+	}
+
+	return nil, err
+}
+
 // SendTemporary sends a message that will be automatically deleted after the specified delay.
 // If delay is 0, DefaultTempMessageDelay is used.
 func (b *Bot) SendTemporary(to tele.Recipient, what any, delay time.Duration, opts ...any) (*tele.Message, error) {
-	msg, err := b.bot.Send(to, what, opts...)
+	msg, err := b.SendWithRetry(to, what, opts...)
 	if err != nil {
 		return nil, err
 	}
