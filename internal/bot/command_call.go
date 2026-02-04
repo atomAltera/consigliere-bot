@@ -2,7 +2,6 @@ package bot
 
 import (
 	"errors"
-	"strings"
 
 	tele "gopkg.in/telebot.v4"
 
@@ -31,26 +30,20 @@ func (b *Bot) handleCall(c tele.Context) error {
 		return UserErrorf(MsgPollDatePassed)
 	}
 
-	// Get undecided usernames
-	usernames, err := b.pollService.GetUndecidedUsernames(p.ID)
+	// Get undecided votes
+	votes, err := b.pollService.GetUndecidedVotes(p.ID)
 	if err != nil {
 		return WrapUserError(MsgFailedGetUndecided, err)
 	}
 
-	if len(usernames) == 0 {
+	if len(votes) == 0 {
 		return UserErrorf(MsgNoUndecidedVoters)
-	}
-
-	// Build mentions string
-	mentions := make([]string, len(usernames))
-	for i, u := range usernames {
-		mentions[i] = "@" + u
 	}
 
 	// Render and send call message
 	html, err := RenderCallMessage(&CallData{
 		EventDate: p.EventDate,
-		Mentions:  strings.Join(mentions, " "),
+		Members:   MembersFromVotes(votes),
 	})
 	if err != nil {
 		return WrapUserError(MsgFailedRenderCall, err)

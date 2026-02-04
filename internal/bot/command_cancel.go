@@ -2,7 +2,6 @@ package bot
 
 import (
 	"errors"
-	"strings"
 
 	tele "gopkg.in/telebot.v4"
 
@@ -74,16 +73,12 @@ func (b *Bot) handleCancel(c tele.Context) error {
 	// Post cancellation notification with mentions
 	cancelData := &CancelData{EventDate: p.EventDate}
 
-	// Add mentions of attending participants
-	usernames, err := b.pollService.GetAttendingUsernames(p.ID)
+	// Add attending participants as members
+	votes, err := b.pollService.GetAttendingVotes(p.ID)
 	if err != nil {
-		b.logger.Warn("failed to get attending usernames", "error", err)
-	} else if len(usernames) > 0 {
-		mentions := make([]string, len(usernames))
-		for i, u := range usernames {
-			mentions[i] = "@" + u
-		}
-		cancelData.Mentions = strings.Join(mentions, ", ")
+		b.logger.Warn("failed to get attending votes", "error", err)
+	} else {
+		cancelData.Members = MembersFromVotes(votes)
 	}
 
 	cancellationMsg, err := RenderCancelMessage(cancelData)

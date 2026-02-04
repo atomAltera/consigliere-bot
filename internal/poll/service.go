@@ -177,38 +177,38 @@ type InvitationData struct {
 	IsCancelled  bool
 }
 
-// GetAttendingUsernames returns usernames of all participants who voted to attend
+// GetAttendingVotes returns all votes from participants who voted to attend
 // (19:00, 20:00, or 21:00+). Returns empty slice if no one is attending.
-func (s *Service) GetAttendingUsernames(pollID int64) ([]string, error) {
+func (s *Service) GetAttendingVotes(pollID int64) ([]*Vote, error) {
 	votes, err := s.votes.GetCurrentVotes(pollID)
 	if err != nil {
 		return nil, err
 	}
 
-	var usernames []string
+	var attending []*Vote
 	for _, v := range votes {
-		if OptionKind(v.TgOptionIndex).IsAttending() && v.TgUsername != "" {
-			usernames = append(usernames, v.TgUsername)
+		if OptionKind(v.TgOptionIndex).IsAttending() {
+			attending = append(attending, v)
 		}
 	}
-	return usernames, nil
+	return attending, nil
 }
 
-// GetUndecidedUsernames returns usernames of all participants who voted "decide later".
+// GetUndecidedVotes returns all votes from participants who voted "decide later".
 // Returns empty slice if no one is undecided.
-func (s *Service) GetUndecidedUsernames(pollID int64) ([]string, error) {
+func (s *Service) GetUndecidedVotes(pollID int64) ([]*Vote, error) {
 	votes, err := s.votes.GetCurrentVotes(pollID)
 	if err != nil {
 		return nil, err
 	}
 
-	var usernames []string
+	var undecided []*Vote
 	for _, v := range votes {
-		if OptionKind(v.TgOptionIndex) == OptionDecideLater && v.TgUsername != "" {
-			usernames = append(usernames, v.TgUsername)
+		if OptionKind(v.TgOptionIndex) == OptionDecideLater {
+			undecided = append(undecided, v)
 		}
 	}
-	return usernames, nil
+	return undecided, nil
 }
 
 // CollectedData holds data for the /done command (collected enough players)

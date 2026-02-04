@@ -2,7 +2,6 @@ package bot
 
 import (
 	"errors"
-	"strings"
 
 	tele "gopkg.in/telebot.v4"
 
@@ -62,26 +61,16 @@ func (b *Bot) handleRestore(c tele.Context) error {
 		p.TgCancelMessageID = 0
 	}
 
-	// Get attending usernames for mentions
-	usernames, err := b.pollService.GetAttendingUsernames(p.ID)
+	// Get attending votes for members
+	votes, err := b.pollService.GetAttendingVotes(p.ID)
 	if err != nil {
-		b.logger.Warn("failed to get attending usernames", "error", err)
-	}
-
-	// Build mentions string
-	var mentions string
-	if len(usernames) > 0 {
-		mentionList := make([]string, len(usernames))
-		for i, u := range usernames {
-			mentionList[i] = "@" + u
-		}
-		mentions = strings.Join(mentionList, " ")
+		b.logger.Warn("failed to get attending votes", "error", err)
 	}
 
 	// Render and send restore message
 	html, err := RenderRestoreMessage(&RestoreData{
 		EventDate: p.EventDate,
-		Mentions:  mentions,
+		Members:   MembersFromVotes(votes),
 	})
 	if err != nil {
 		return WrapUserError(MsgFailedRenderRestore, err)

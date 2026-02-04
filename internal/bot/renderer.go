@@ -5,6 +5,7 @@ import (
 	"embed"
 	"fmt"
 	"html/template"
+	"strings"
 	"time"
 
 	"nuclight.org/consigliere/internal/poll"
@@ -65,9 +66,24 @@ func formatDateRussianShort(t time.Time) string {
 	return fmt.Sprintf("%d %s", t.Day(), month)
 }
 
+// formatMembers formats a slice of Members as space-separated mentions
+func formatMembers(members []Member) string {
+	if len(members) == 0 {
+		return ""
+	}
+	names := make([]string, 0, len(members))
+	for _, m := range members {
+		if name := m.DisplayName(); name != "" {
+			names = append(names, name)
+		}
+	}
+	return strings.Join(names, " ")
+}
+
 var templateFuncs = template.FuncMap{
-	"ruDate":      FormatDateRussian,
-	"ruDateShort": formatDateRussianShort,
+	"ruDate":        FormatDateRussian,
+	"ruDateShort":   formatDateRussianShort,
+	"formatMembers": formatMembers,
 }
 
 // InitTemplates initializes all templates. Must be called before using any Render* functions.
@@ -174,7 +190,7 @@ func RenderInvitation(data *poll.InvitationData) (string, error) {
 // CancelData holds data for the cancel message template
 type CancelData struct {
 	EventDate time.Time
-	Mentions  string // comma-separated @mentions
+	Members   []Member
 }
 
 // RenderCancelMessage renders the cancellation notification message.
@@ -189,7 +205,7 @@ func RenderCancelMessage(data *CancelData) (string, error) {
 // RestoreData holds data for the restore message template
 type RestoreData struct {
 	EventDate time.Time
-	Mentions  string // space-separated @mentions
+	Members   []Member
 }
 
 // RenderRestoreMessage renders the restore notification message.
@@ -204,7 +220,7 @@ func RenderRestoreMessage(data *RestoreData) (string, error) {
 // CallData holds data for the call message template
 type CallData struct {
 	EventDate time.Time
-	Mentions  string // space-separated @mentions
+	Members   []Member
 }
 
 // RenderCallMessage renders the call message for undecided voters.
@@ -229,7 +245,7 @@ func HelpMessage() (string, error) {
 type CollectedData struct {
 	EventDate time.Time
 	StartTime string // e.g., "19:00" or "20:00"
-	Mentions  string // space-separated @mentions
+	Members   []Member
 }
 
 // RenderCollectedMessage renders the "players collected" notification message.

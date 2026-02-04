@@ -2,7 +2,6 @@ package bot
 
 import (
 	"errors"
-	"strings"
 
 	tele "gopkg.in/telebot.v4"
 
@@ -60,19 +59,11 @@ func (b *Bot) handleDone(c tele.Context) error {
 		return UserErrorf(MsgNotEnoughPlayers)
 	}
 
-	// Build mentions string (only users with usernames)
-	var mentions []string
-	for _, v := range votesToMention {
-		if v.TgUsername != "" {
-			mentions = append(mentions, "@"+v.TgUsername)
-		}
-	}
-
 	// Render and send collected message
 	html, err := RenderCollectedMessage(&CollectedData{
 		EventDate: p.EventDate,
 		StartTime: startTime,
-		Mentions:  strings.Join(mentions, " "),
+		Members:   MembersFromVotes(votesToMention),
 	})
 	if err != nil {
 		return WrapUserError(MsgFailedRenderCollected, err)

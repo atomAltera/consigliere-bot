@@ -264,8 +264,8 @@ func TestIntegration_DuplicatePollPrevention(t *testing.T) {
 	}
 }
 
-// Integration test: GetAttendingUsernames and GetUndecidedUsernames
-func TestIntegration_GetUsernames(t *testing.T) {
+// Integration test: GetAttendingVotes and GetUndecidedVotes
+func TestIntegration_GetVotes(t *testing.T) {
 	pollRepo := &mockPollRepo{polls: make(map[int64]*Poll)}
 	voteRepo := &mockVoteRepo{}
 	svc := NewService(pollRepo, voteRepo)
@@ -282,24 +282,24 @@ func TestIntegration_GetUsernames(t *testing.T) {
 	voteRepo.Record(&Vote{PollID: poll.ID, TgUserID: 3, TgUsername: "charlie", TgOptionIndex: int(OptionDecideLater), VotedAt: now})
 	voteRepo.Record(&Vote{PollID: poll.ID, TgUserID: 4, TgUsername: "", TgOptionIndex: int(OptionComeAt20), VotedAt: now}) // no username
 
-	// Test GetAttendingUsernames
-	attending, err := svc.GetAttendingUsernames(poll.ID)
+	// Test GetAttendingVotes
+	attending, err := svc.GetAttendingVotes(poll.ID)
 	if err != nil {
-		t.Fatalf("GetAttendingUsernames failed: %v", err)
+		t.Fatalf("GetAttendingVotes failed: %v", err)
 	}
-	if len(attending) != 2 { // alice and bob (user without username not counted)
-		t.Errorf("expected 2 attending usernames, got %d: %v", len(attending), attending)
+	if len(attending) != 3 { // alice, bob, and user4 (all attending options)
+		t.Errorf("expected 3 attending votes, got %d", len(attending))
 	}
 
-	// Test GetUndecidedUsernames
-	undecided, err := svc.GetUndecidedUsernames(poll.ID)
+	// Test GetUndecidedVotes
+	undecided, err := svc.GetUndecidedVotes(poll.ID)
 	if err != nil {
-		t.Fatalf("GetUndecidedUsernames failed: %v", err)
+		t.Fatalf("GetUndecidedVotes failed: %v", err)
 	}
 	if len(undecided) != 1 { // charlie
-		t.Errorf("expected 1 undecided username, got %d: %v", len(undecided), undecided)
+		t.Errorf("expected 1 undecided vote, got %d", len(undecided))
 	}
-	if undecided[0] != "charlie" {
-		t.Errorf("expected undecided to be 'charlie', got %s", undecided[0])
+	if undecided[0].TgUsername != "charlie" {
+		t.Errorf("expected undecided to be 'charlie', got %s", undecided[0].TgUsername)
 	}
 }
