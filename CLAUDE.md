@@ -28,6 +28,10 @@ go run ./cmd/consigliere                          # Run directly
 | `DB_PATH` | Yes | Path to SQLite database file |
 | `SENTRY_DSN` | No | Sentry DSN for error tracking |
 | `DEV_MODE` | No | Set to `true` for development environment |
+| `TEMP_MESSAGE_DELAY_SECONDS` | No | Delay before auto-deleting temp messages (default: 5) |
+| `POLLING_TIMEOUT_SECONDS` | No | Telegram long polling timeout (default: 10) |
+
+Configuration can also be loaded from a `.env` file in the project root.
 
 ## Key Features
 

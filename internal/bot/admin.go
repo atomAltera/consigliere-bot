@@ -112,7 +112,7 @@ func (b *Bot) DeleteCommand() tele.MiddlewareFunc {
 // It logs internal errors and sends appropriate messages to users:
 // - UserError: sends the user-friendly message (temporarily), logs if there's an underlying cause
 // - Other errors: sends a generic error message (temporarily), logs the full error
-// Error messages are automatically deleted after DefaultTempMessageDelay.
+// Error messages are automatically deleted after the configured TempMessageDelay.
 func (b *Bot) HandleErrors() tele.MiddlewareFunc {
 	return func(next tele.HandlerFunc) tele.HandlerFunc {
 		return func(c tele.Context) error {
@@ -142,7 +142,7 @@ func (b *Bot) HandleErrors() tele.MiddlewareFunc {
 			} else {
 				// Delete the error message after a delay
 				go func() {
-					time.Sleep(DefaultTempMessageDelay)
+					time.Sleep(b.tempMessageDelay)
 					if delErr := b.bot.Delete(msg); delErr != nil {
 						b.logger.Warn("failed to delete temporary error message",
 							"error", delErr,

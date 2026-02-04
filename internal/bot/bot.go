@@ -6,11 +6,9 @@ import (
 
 	tele "gopkg.in/telebot.v4"
 
+	"nuclight.org/consigliere/internal/config"
 	"nuclight.org/consigliere/internal/poll"
 )
-
-// DefaultTempMessageDelay is the default delay before deleting temporary messages.
-const DefaultTempMessageDelay = 5 * time.Second
 
 // Retry configuration
 const (
@@ -19,16 +17,17 @@ const (
 )
 
 type Bot struct {
-	bot         *tele.Bot
-	pollService *poll.Service
-	logger      *slog.Logger
-	rateLimiter *rateLimiter
+	bot              *tele.Bot
+	pollService      *poll.Service
+	logger           *slog.Logger
+	rateLimiter      *rateLimiter
+	tempMessageDelay time.Duration
 }
 
-func New(token string, pollService *poll.Service, logger *slog.Logger) (*Bot, error) {
+func New(cfg *config.Config, pollService *poll.Service, logger *slog.Logger) (*Bot, error) {
 	pref := tele.Settings{
-		Token:  token,
-		Poller: &tele.LongPoller{Timeout: 10 * time.Second},
+		Token:  cfg.TelegramToken,
+		Poller: &tele.LongPoller{Timeout: cfg.PollingTimeout},
 	}
 
 	b, err := tele.NewBot(pref)
@@ -37,10 +36,11 @@ func New(token string, pollService *poll.Service, logger *slog.Logger) (*Bot, er
 	}
 
 	return &Bot{
-		bot:         b,
-		pollService: pollService,
-		logger:      logger,
-		rateLimiter: newRateLimiter(),
+		bot:              b,
+		pollService:      pollService,
+		logger:           logger,
+		rateLimiter:      newRateLimiter(),
+		tempMessageDelay: cfg.TempMessageDelay,
 	}, nil
 }
 
@@ -93,7 +93,7 @@ func (b *Bot) SendWithRetry(to tele.Recipient, what any, opts ...any) (*tele.Mes
 }
 
 // SendTemporary sends a message that will be automatically deleted after the specified delay.
-// If delay is 0, DefaultTempMessageDelay is used.
+// If delay is 0, the configured TempMessageDelay is used.
 func (b *Bot) SendTemporary(to tele.Recipient, what any, delay time.Duration, opts ...any) (*tele.Message, error) {
 	msg, err := b.SendWithRetry(to, what, opts...)
 	if err != nil {
@@ -101,7 +101,7 @@ func (b *Bot) SendTemporary(to tele.Recipient, what any, delay time.Duration, op
 	}
 
 	if delay == 0 {
-		delay = DefaultTempMessageDelay
+		delay = b.tempMessageDelay
 	}
 
 	go func() {

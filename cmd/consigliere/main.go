@@ -95,7 +95,7 @@ func main() {
 	pollService := poll.NewService(pollRepo, voteRepo)
 
 	// Create and start bot
-	b, err := bot.New(cfg.TelegramToken, pollService, appLog)
+	b, err := bot.New(cfg, pollService, appLog)
 	if err != nil {
 		appLog.Error("failed to create bot", "error", err)
 		os.Exit(1)
