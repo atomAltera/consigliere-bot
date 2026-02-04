@@ -11,7 +11,10 @@
       "Bash(go build:*)",
       "Bash(git:*)",
       "Bash(wc:*)",
-      "Bash(sort:*)"
+      "Bash(sort:*)",
+      "mcp__fetch__fetch",
+      "Bash(cat:*)",
+      "Bash(go get:*)"
     ]
   }
 }
