@@ -21,6 +21,7 @@ var pollTitleTmpl *template.Template
 var cancelTmpl *template.Template
 var restoreTmpl *template.Template
 var callTmpl *template.Template
+var collectedTmpl *template.Template
 
 // Russian weekday names
 var russianWeekdays = []string{
@@ -91,6 +92,10 @@ func InitTemplates() error {
 	callTmpl, err = template.New("call.html").Funcs(templateFuncs).ParseFS(templates, "templates/call.html")
 	if err != nil {
 		return fmt.Errorf("parse call template: %w", err)
+	}
+	collectedTmpl, err = template.New("collected.html").Funcs(templateFuncs).ParseFS(templates, "templates/collected.html")
+	if err != nil {
+		return fmt.Errorf("parse collected template: %w", err)
 	}
 	return nil
 }
@@ -218,4 +223,20 @@ func HelpMessage() (string, error) {
 		return "", err
 	}
 	return string(content), nil
+}
+
+// CollectedData holds data for the collected message template
+type CollectedData struct {
+	EventDate time.Time
+	StartTime string // e.g., "19:00" or "20:00"
+	Mentions  string // space-separated @mentions
+}
+
+// RenderCollectedMessage renders the "players collected" notification message.
+func RenderCollectedMessage(data *CollectedData) (string, error) {
+	var buf bytes.Buffer
+	if err := collectedTmpl.Execute(&buf, data); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
 }

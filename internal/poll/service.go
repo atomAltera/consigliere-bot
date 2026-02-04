@@ -211,6 +211,36 @@ func (s *Service) GetUndecidedUsernames(pollID int64) ([]string, error) {
 	return usernames, nil
 }
 
+// CollectedData holds data for the /done command (collected enough players)
+type CollectedData struct {
+	Votes19 []*Vote // voters for 19:00
+	Votes20 []*Vote // voters for 20:00
+}
+
+// GetCollectedData returns votes for 19:00 and 20:00 options
+func (s *Service) GetCollectedData(pollID int64) (*CollectedData, error) {
+	votes, err := s.votes.GetCurrentVotes(pollID)
+	if err != nil {
+		return nil, err
+	}
+
+	data := &CollectedData{
+		Votes19: []*Vote{},
+		Votes20: []*Vote{},
+	}
+
+	for _, v := range votes {
+		switch OptionKind(v.TgOptionIndex) {
+		case OptionComeAt19:
+			data.Votes19 = append(data.Votes19, v)
+		case OptionComeAt20:
+			data.Votes20 = append(data.Votes20, v)
+		}
+	}
+
+	return data, nil
+}
+
 // GetInvitationData returns results formatted for the invitation message
 func (s *Service) GetInvitationData(pollID int64) (*InvitationData, error) {
 	votes, err := s.votes.GetCurrentVotes(pollID)

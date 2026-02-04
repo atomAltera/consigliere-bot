@@ -12,6 +12,7 @@ const (
 	MsgVoteUsage          = "Использование: /vote @имя <опция 1-5>\nОпции: 1=19:00, 2=20:00, 3=21:00+, 4=решу позже, 5=не приду"
 	MsgInvalidVoteOption  = "Неверная опция. Используйте 1-5:\n1=19:00, 2=20:00, 3=21:00+, 4=решу позже, 5=не приду"
 	MsgNoUndecidedVoters  = "Нет участников, которые ещё не определились"
+	MsgNotEnoughPlayers   = "Недостаточно игроков. Нужно минимум 11 человек на 19:00 и 20:00"
 )
 
 // System error messages (internal errors, hide details from user)
@@ -39,6 +40,8 @@ const (
 	MsgFailedGetUndecided       = "Не удалось получить список неопределившихся"
 	MsgFailedRenderCall         = "Не удалось сформировать сообщение"
 	MsgFailedSendCall           = "Не удалось отправить сообщение"
+	MsgFailedRenderCollected    = "Не удалось сформировать сообщение о наборе"
+	MsgFailedSendCollected      = "Не удалось отправить сообщение о наборе"
 )
 
 // Format strings for dynamic messages
