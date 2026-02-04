@@ -111,7 +111,7 @@ func TestParseEventDate_ExplicitDate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	expected := time.Date(2024, 3, 15, 0, 0, 0, 0, time.UTC)
+	expected := time.Date(2024, 3, 15, 0, 0, 0, 0, time.Local)
 	if !date.Equal(expected) {
 		t.Errorf("parseEventDate([\"2024-03-15\"]) = %v, want %v", date, expected)
 	}
