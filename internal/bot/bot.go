@@ -94,7 +94,21 @@ func (b *Bot) SendWithRetry(to tele.Recipient, what any, opts ...any) (*tele.Mes
 
 // SendTemporary sends a message that will be automatically deleted after the specified delay.
 // If delay is 0, the configured TempMessageDelay is used.
+// Messages are sent silently (without notification) to avoid disturbing chat members.
 func (b *Bot) SendTemporary(to tele.Recipient, what any, delay time.Duration, opts ...any) (*tele.Message, error) {
+	// Ensure silent notification for temporary messages.
+	// If SendOptions is provided, set DisableNotification directly to avoid being overwritten.
+	// Otherwise, prepend tele.Silent flag.
+	hasSendOptions := false
+	for _, opt := range opts {
+		if sendOpts, ok := opt.(*tele.SendOptions); ok {
+			sendOpts.DisableNotification = true
+			hasSendOptions = true
+		}
+	}
+	if !hasSendOptions {
+		opts = append([]any{tele.Silent}, opts...)
+	}
 	msg, err := b.SendWithRetry(to, what, opts...)
 	if err != nil {
 		return nil, err
