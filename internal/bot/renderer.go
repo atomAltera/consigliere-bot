@@ -145,22 +145,23 @@ func formatNickList(members []Member) string {
 
 // formatResultsVoter formats a single ResultsVoter for the /results admin display.
 // Output format: • <code>TgID</code> @username Name → Nickname
-func formatResultsVoter(v ResultsVoter) string {
+// Returns template.HTML so the <code> tags are not escaped.
+func formatResultsVoter(v ResultsVoter) template.HTML {
 	var b strings.Builder
 	b.WriteString("• <code>")
 	b.WriteString(fmt.Sprintf("%d", v.TgID))
 	b.WriteString("</code>")
 	if v.TgUsername != "" {
 		b.WriteString(" @")
-		b.WriteString(v.TgUsername)
+		b.WriteString(template.HTMLEscapeString(v.TgUsername))
 	}
 	b.WriteString(" ")
-	b.WriteString(v.TgName)
+	b.WriteString(template.HTMLEscapeString(v.TgName))
 	if v.Nickname != "" {
 		b.WriteString(" → ")
-		b.WriteString(v.Nickname)
+		b.WriteString(template.HTMLEscapeString(v.Nickname))
 	}
-	return b.String()
+	return template.HTML(b.String())
 }
 
 var templateFuncs = template.FuncMap{

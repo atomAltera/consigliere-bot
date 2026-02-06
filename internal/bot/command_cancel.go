@@ -86,7 +86,7 @@ func (b *Bot) handleCancel(c tele.Context) error {
 		return WrapUserError(MsgFailedRenderCancellation, err)
 	}
 
-	sentMsg, err := c.Bot().Send(c.Chat(), cancellationMsg)
+	sentMsg, err := b.SendWithRetry(c.Chat(), cancellationMsg, tele.ModeHTML)
 	if err != nil {
 		return WrapUserError(MsgFailedSendCancellation, err)
 	}
