@@ -16,11 +16,16 @@ func NewVoteRepository(db *DB) *VoteRepository {
 	return &VoteRepository{db: db}
 }
 
+// Record inserts a new vote record.
+// Username is normalized to lowercase before storing.
 func (r *VoteRepository) Record(v *poll.Vote) error {
+	// Normalize username for storage
+	normalizedUsername := poll.NormalizeUsername(v.TgUsername)
+
 	result, err := r.db.db.Exec(`
 		INSERT INTO votes (poll_id, tg_user_id, tg_username, tg_first_name, tg_option_index, is_manual, voted_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?)
-	`, v.PollID, v.TgUserID, v.TgUsername, v.TgFirstName, v.TgOptionIndex, v.IsManual, time.Now())
+	`, v.PollID, v.TgUserID, normalizedUsername, v.TgFirstName, v.TgOptionIndex, v.IsManual, time.Now())
 	if err != nil {
 		return fmt.Errorf("insert vote: %w", err)
 	}
@@ -67,6 +72,7 @@ func (r *VoteRepository) GetCurrentVotes(pollID int64) ([]*poll.Vote, error) {
 
 // LookupUserIDByUsername returns the user ID for a given username from voting history.
 // Returns the most recent user ID associated with the username, true if found, or 0, false if not found.
+// Username is normalized to lowercase for lookup.
 func (r *VoteRepository) LookupUserIDByUsername(username string) (int64, bool, error) {
 	var userID int64
 	err := r.db.db.QueryRow(`
@@ -74,7 +80,7 @@ func (r *VoteRepository) LookupUserIDByUsername(username string) (int64, bool, e
 		WHERE tg_username = ? AND tg_user_id > 0
 		ORDER BY voted_at DESC
 		LIMIT 1
-	`, username).Scan(&userID)
+	`, poll.NormalizeUsername(username)).Scan(&userID)
 	if err == sql.ErrNoRows {
 		return 0, false, nil
 	}

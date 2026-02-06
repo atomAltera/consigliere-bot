@@ -24,7 +24,15 @@ func isUniqueConstraintError(err error) bool {
 
 // Create inserts a new nickname record if game_nick is not already taken.
 // Returns true if inserted, false if game_nick is already used by another player.
+// Username is normalized to lowercase before storing.
 func (r *NicknameRepository) Create(tgUserID *int64, tgUsername *string, gameNick string) (bool, error) {
+	// Normalize username for storage
+	var normalizedUsername *string
+	if tgUsername != nil {
+		normalized := poll.NormalizeUsername(*tgUsername)
+		normalizedUsername = &normalized
+	}
+
 	// Check if game_nick is already taken (globally unique)
 	var exists bool
 	err := r.db.db.QueryRow(`
@@ -40,7 +48,7 @@ func (r *NicknameRepository) Create(tgUserID *int64, tgUsername *string, gameNic
 	_, err = r.db.db.Exec(`
 		INSERT INTO nicknames (tg_user_id, tg_username, game_nick, created_at)
 		VALUES (?, ?, ?, ?)
-	`, tgUserID, tgUsername, gameNick, time.Now())
+	`, tgUserID, normalizedUsername, gameNick, time.Now())
 	if err != nil {
 		// Handle unique constraint violation (race condition)
 		if isUniqueConstraintError(err) {
@@ -79,6 +87,7 @@ func (r *NicknameRepository) FindByGameNick(gameNick string) (tgUserID *int64, t
 }
 
 // FindByTgUsername returns the most recent game nickname and user ID for a telegram username.
+// Username is normalized to lowercase for lookup.
 func (r *NicknameRepository) FindByTgUsername(username string) (gameNick string, tgUserID *int64, err error) {
 	var userID sql.NullInt64
 	err = r.db.db.QueryRow(`
@@ -87,7 +96,7 @@ func (r *NicknameRepository) FindByTgUsername(username string) (gameNick string,
 		WHERE tg_username = ?
 		ORDER BY created_at DESC
 		LIMIT 1
-	`, username).Scan(&gameNick, &userID)
+	`, poll.NormalizeUsername(username)).Scan(&gameNick, &userID)
 	if err == sql.ErrNoRows {
 		return "", nil, nil
 	}
@@ -120,6 +129,7 @@ func (r *NicknameRepository) FindByTgUserID(userID int64) (gameNick string, err 
 
 // GetDisplayNick returns the game nickname for display, given a user ID or username.
 // Checks by user ID first, then by username.
+// Username is normalized to lowercase for lookup.
 func (r *NicknameRepository) GetDisplayNick(userID int64, username string) (string, error) {
 	// Try by user ID first (more reliable)
 	if userID > 0 {
@@ -132,7 +142,7 @@ func (r *NicknameRepository) GetDisplayNick(userID int64, username string) (stri
 		}
 	}
 
-	// Fall back to username
+	// Fall back to username (FindByTgUsername normalizes internally)
 	if username != "" {
 		nick, _, err := r.FindByTgUsername(username)
 		if err != nil {
@@ -147,12 +157,13 @@ func (r *NicknameRepository) GetDisplayNick(userID int64, username string) (stri
 }
 
 // UpdateUserIDByUsername sets tg_user_id for all records matching tg_username where tg_user_id is NULL.
+// Username is normalized to lowercase for lookup.
 func (r *NicknameRepository) UpdateUserIDByUsername(username string, userID int64) error {
 	_, err := r.db.db.Exec(`
 		UPDATE nicknames
 		SET tg_user_id = ?
 		WHERE tg_username = ? AND tg_user_id IS NULL
-	`, userID, username)
+	`, userID, poll.NormalizeUsername(username))
 	if err != nil {
 		return fmt.Errorf("update user id by username: %w", err)
 	}
@@ -160,11 +171,12 @@ func (r *NicknameRepository) UpdateUserIDByUsername(username string, userID int6
 }
 
 // GetAllGameNicksForUser returns all game nicks associated with a user (by ID or username).
+// Username is normalized to lowercase for lookup.
 func (r *NicknameRepository) GetAllGameNicksForUser(userID int64, username string) ([]string, error) {
 	rows, err := r.db.db.Query(`
 		SELECT DISTINCT game_nick FROM nicknames
 		WHERE tg_user_id = ? OR tg_username = ?
-	`, userID, username)
+	`, userID, poll.NormalizeUsername(username))
 	if err != nil {
 		return nil, fmt.Errorf("query game nicks: %w", err)
 	}
@@ -184,12 +196,13 @@ func (r *NicknameRepository) GetAllGameNicksForUser(userID int64, username strin
 // GetDisplayNicksBatch returns game nicknames for multiple users in a single query.
 // Returns a map from user ID or username to game nickname.
 // For users with both ID and username, the result is keyed by user ID.
+// Usernames are normalized to lowercase for lookup and in the returned map.
 func (r *NicknameRepository) GetDisplayNicksBatch(keys []poll.NicknameLookupKey) (map[int64]string, map[string]string, error) {
 	if len(keys) == 0 {
 		return make(map[int64]string), make(map[string]string), nil
 	}
 
-	// Collect unique user IDs and usernames
+	// Collect unique user IDs and usernames (normalized)
 	userIDs := make([]int64, 0)
 	usernames := make([]string, 0)
 	seenIDs := make(map[int64]bool)
@@ -200,9 +213,12 @@ func (r *NicknameRepository) GetDisplayNicksBatch(keys []poll.NicknameLookupKey)
 			userIDs = append(userIDs, k.UserID)
 			seenIDs[k.UserID] = true
 		}
-		if k.Username != "" && !seenUsernames[k.Username] {
-			usernames = append(usernames, k.Username)
-			seenUsernames[k.Username] = true
+		if k.Username != "" {
+			normalized := poll.NormalizeUsername(k.Username)
+			if !seenUsernames[normalized] {
+				usernames = append(usernames, normalized)
+				seenUsernames[normalized] = true
+			}
 		}
 	}
 

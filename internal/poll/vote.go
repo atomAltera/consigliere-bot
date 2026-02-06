@@ -2,6 +2,7 @@ package poll
 
 import (
 	"hash/fnv"
+	"strings"
 	"time"
 )
 
@@ -16,8 +17,16 @@ type Vote struct {
 	VotedAt       time.Time
 }
 
+// NormalizeUsername normalizes a Telegram username to lowercase.
+// Telegram usernames are case-insensitive, so we store them lowercase
+// to avoid duplicate rows and lookup misses (e.g., @User vs @user).
+func NormalizeUsername(username string) string {
+	return strings.ToLower(username)
+}
+
 // ManualUserID generates a synthetic user ID for manual votes based on username.
 // Uses negative IDs to avoid collision with real Telegram user IDs (which are positive).
+// Note: username should be normalized before calling this function for consistency.
 func ManualUserID(username string) int64 {
 	h := fnv.New64a()
 	h.Write([]byte(username))

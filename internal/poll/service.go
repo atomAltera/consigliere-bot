@@ -313,6 +313,7 @@ type NicknameCache struct {
 }
 
 // Get returns the nickname for a user, checking user ID first, then username.
+// Username is normalized to lowercase for lookup.
 func (c *NicknameCache) Get(userID int64, username string) string {
 	if userID > 0 {
 		if nick, ok := c.byUserID[userID]; ok {
@@ -320,7 +321,7 @@ func (c *NicknameCache) Get(userID int64, username string) string {
 		}
 	}
 	if username != "" {
-		if nick, ok := c.byUsername[username]; ok {
+		if nick, ok := c.byUsername[NormalizeUsername(username)]; ok {
 			return nick
 		}
 	}
