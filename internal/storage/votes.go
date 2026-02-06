@@ -66,12 +66,13 @@ func (r *VoteRepository) GetCurrentVotes(pollID int64) ([]*poll.Vote, error) {
 }
 
 // LookupUserIDByUsername returns the user ID for a given username from voting history.
-// Returns the user ID, true if found, or 0, false if not found.
+// Returns the most recent user ID associated with the username, true if found, or 0, false if not found.
 func (r *VoteRepository) LookupUserIDByUsername(username string) (int64, bool, error) {
 	var userID int64
 	err := r.db.db.QueryRow(`
-		SELECT DISTINCT tg_user_id FROM votes
+		SELECT tg_user_id FROM votes
 		WHERE tg_username = ? AND tg_user_id > 0
+		ORDER BY voted_at DESC
 		LIMIT 1
 	`, username).Scan(&userID)
 	if err == sql.ErrNoRows {
