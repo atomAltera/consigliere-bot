@@ -29,7 +29,7 @@ func (b *Bot) handleRestore(c tele.Context) error {
 	}
 
 	// Update invitation message to remove cancellation footer
-	if p.TgResultsMessageID != 0 {
+	if p.TgInvitationMessageID != 0 {
 		results, err := b.pollService.GetInvitationData(p.ID)
 		if err != nil {
 			b.logger.Warn("failed to get invitation data for restore", "error", err)
@@ -43,7 +43,7 @@ func (b *Bot) handleRestore(c tele.Context) error {
 				b.logger.Warn("failed to render restored invitation", "error", err)
 			} else {
 				chat := &tele.Chat{ID: p.TgChatID}
-				msg := &tele.Message{ID: p.TgResultsMessageID, Chat: chat}
+				msg := &tele.Message{ID: p.TgInvitationMessageID, Chat: chat}
 				if _, err = b.bot.Edit(msg, html, tele.ModeHTML); err != nil {
 					b.logger.Warn("failed to update invitation message", "error", err)
 				}
@@ -76,14 +76,9 @@ func (b *Bot) handleRestore(c tele.Context) error {
 		return WrapUserError(MsgFailedRenderRestore, err)
 	}
 
-	restoreMsg, err := b.SendWithRetry(c.Chat(), html, tele.ModeHTML)
+	_, err = b.SendWithRetry(c.Chat(), html, tele.ModeHTML)
 	if err != nil {
 		return WrapUserError(MsgFailedSendRestore, err)
-	}
-
-	// Pin the restore message
-	if err := c.Bot().Pin(restoreMsg); err != nil {
-		b.logger.Warn("failed to pin restore message", "error", err)
 	}
 
 	// Save poll (clear cancel message ID)

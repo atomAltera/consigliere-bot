@@ -48,7 +48,7 @@ func (b *Bot) handleCancel(c tele.Context) error {
 	}
 
 	// Update invitation message with cancellation footer
-	if p.TgResultsMessageID != 0 {
+	if p.TgInvitationMessageID != 0 {
 		results, err := b.pollService.GetInvitationData(p.ID)
 		if err != nil {
 			b.logger.Warn("failed to get invitation data for cancellation", "error", err)
@@ -62,7 +62,7 @@ func (b *Bot) handleCancel(c tele.Context) error {
 				b.logger.Warn("failed to render cancelled invitation", "error", err)
 			} else {
 				chat := &tele.Chat{ID: p.TgChatID}
-				msg := &tele.Message{ID: p.TgResultsMessageID, Chat: chat}
+				msg := &tele.Message{ID: p.TgInvitationMessageID, Chat: chat}
 				if _, err = b.bot.Edit(msg, html, tele.ModeHTML); err != nil {
 					b.logger.Warn("failed to update invitation message with cancellation", "error", err)
 				}

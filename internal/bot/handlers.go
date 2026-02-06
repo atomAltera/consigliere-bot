@@ -67,7 +67,7 @@ func (b *Bot) handlePollAnswer(c tele.Context) error {
 	}
 
 	// Update invitation message if exists
-	if p.TgResultsMessageID != 0 {
+	if p.TgInvitationMessageID != 0 {
 		results, err := b.pollService.GetInvitationData(p.ID)
 		if err != nil {
 			return fmt.Errorf("get invitation data: %w", err)
@@ -82,7 +82,7 @@ func (b *Bot) handlePollAnswer(c tele.Context) error {
 		}
 
 		chat := &tele.Chat{ID: p.TgChatID}
-		msg := &tele.Message{ID: p.TgResultsMessageID, Chat: chat}
+		msg := &tele.Message{ID: p.TgInvitationMessageID, Chat: chat}
 		if _, err = b.bot.Edit(msg, html, tele.ModeHTML); err != nil {
 			// Non-critical: message may have been deleted, just log
 			b.logger.Warn("failed to update invitation message", "error", err)

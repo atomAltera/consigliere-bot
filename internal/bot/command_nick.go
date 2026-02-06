@@ -115,7 +115,7 @@ func (b *Bot) refreshInvitationMessage(chatID int64) error {
 		return err // Propagate real errors
 	}
 
-	if p.TgResultsMessageID == 0 {
+	if p.TgInvitationMessageID == 0 {
 		return nil // No invitation message to update
 	}
 
@@ -134,7 +134,7 @@ func (b *Bot) refreshInvitationMessage(chatID int64) error {
 	}
 
 	chat := &tele.Chat{ID: p.TgChatID}
-	msg := &tele.Message{ID: p.TgResultsMessageID, Chat: chat}
+	msg := &tele.Message{ID: p.TgInvitationMessageID, Chat: chat}
 	_, err = b.bot.Edit(msg, html, tele.ModeHTML)
 	return err
 }

@@ -59,6 +59,15 @@ func (b *Bot) handleDone(c tele.Context) error {
 		return UserErrorf(MsgNotEnoughPlayers)
 	}
 
+	// Delete old /done message if exists
+	if p.TgDoneMessageID != 0 {
+		chat := &tele.Chat{ID: p.TgChatID}
+		msg := &tele.Message{ID: p.TgDoneMessageID, Chat: chat}
+		if err := b.bot.Delete(msg); err != nil {
+			b.logger.Warn("failed to delete old done message", "error", err)
+		}
+	}
+
 	// Render and send collected message
 	html, err := RenderCollectedMessage(&CollectedData{
 		EventDate:   p.EventDate,
@@ -70,9 +79,15 @@ func (b *Bot) handleDone(c tele.Context) error {
 		return WrapUserError(MsgFailedRenderCollected, err)
 	}
 
-	_, err = b.SendWithRetry(c.Chat(), html, tele.ModeHTML)
+	sentMsg, err := b.SendWithRetry(c.Chat(), html, tele.ModeHTML)
 	if err != nil {
 		return WrapUserError(MsgFailedSendCollected, err)
+	}
+
+	// Store done message ID
+	p.TgDoneMessageID = sentMsg.ID
+	if err := b.pollService.UpdatePoll(p); err != nil {
+		return WrapUserError(MsgFailedSavePollStatus, err)
 	}
 
 	return nil

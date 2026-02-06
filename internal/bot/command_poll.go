@@ -78,7 +78,7 @@ func (b *Bot) handlePoll(c tele.Context) error {
 	}
 
 	// Store invitation message ID
-	p.TgResultsMessageID = invitationMsg.ID
+	p.TgInvitationMessageID = invitationMsg.ID
 
 	// Render poll title from template
 	pollTitle, err := RenderPollTitle(eventDate)
