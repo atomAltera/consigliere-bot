@@ -6,7 +6,8 @@ Telegram bot for coordinating weekly mafia game events. Posts polls to collect p
 
 - **Poll Management**: Create polls for Monday/Saturday game events with time slot options
 - **Vote Tracking**: Records all votes in SQLite database with full history
-- **Results Display**: Auto-updating results message that reflects vote changes in real-time
+- **Invitation Message**: Auto-updating message that reflects vote changes in real-time
+- **Game Nicknames**: Link Telegram users to game nicknames for display
 - **Admin-Only Commands**: Only chat administrators can control the bot
 - **Clean Chat**: Command messages are deleted after execution
 
@@ -15,10 +16,15 @@ Telegram bot for coordinating weekly mafia game events. Posts polls to collect p
 | Command | Description |
 |---------|-------------|
 | `/poll [day]` | Create a poll for the specified day. Accepts day names (`monday`, `sat`) or dates (`2024-01-15`). Defaults to nearest Monday or Saturday. |
-| `/results` | Post/update the results message for the active poll |
+| `/results` | Show detailed voter info (Telegram ID, username, name, game nick). Auto-deletes after 30 seconds. |
 | `/pin` | Pin the poll message and notify all members |
-| `/cancel` | Cancel the event and pin a cancellation notice |
-| `/vote @user <1-5>` | Manually record a vote for a user (1=19:00, 2=20:00, 3=21:00+, 4=undecided, 5=not coming) |
+| `/cancel` | Cancel the event and notify participants |
+| `/restore` | Restore the last cancelled poll (if event date hasn't passed) |
+| `/vote <name> <1-5>` | Manually record a vote by @username or game nickname |
+| `/nick <telegram> <gamenick>` | Link a Telegram user (@username or ID) to a game nickname |
+| `/call` | Mention all undecided voters to remind them to vote |
+| `/done` | Announce that enough players (11+) have been collected |
+| `/help` | Show help message with all commands |
 
 ## Poll Options
 
@@ -74,11 +80,11 @@ go run ./cmd/consigliere
 .
 ├── cmd/consigliere/     # Application entry point
 ├── internal/
-│   ├── bot/             # Telegram bot handlers and middleware
+│   ├── bot/             # Telegram bot handlers, middleware, and templates
 │   ├── config/          # Configuration loading
-│   ├── poll/            # Poll domain logic and rendering
+│   ├── logger/          # Structured logging setup
+│   ├── poll/            # Poll domain logic
 │   └── storage/         # SQLite database layer
-└── templates/           # HTML templates for results
 ```
 
 ## License

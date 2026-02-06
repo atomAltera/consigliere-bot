@@ -16,7 +16,9 @@
       "Bash(cat:*)",
       "Bash(go get:*)",
       "Bash(xargs cat:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "mcp__gopls__go_search",
+      "mcp__gopls__go_symbol_references"
     ]
   }
 }
