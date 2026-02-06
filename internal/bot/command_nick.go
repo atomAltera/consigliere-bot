@@ -159,6 +159,7 @@ func (b *Bot) membersFromVotesWithNicknames(votes []*poll.Vote) []Member {
 
 // enrichVotesWithNicknames looks up game nicknames for votes and sets them.
 // Note: This modifies votes in place and clears username for display purposes.
+// When a game nickname is found, it takes priority for both regular and manual votes.
 func (b *Bot) enrichVotesWithNicknames(votes []*poll.Vote) {
 	for _, v := range votes {
 		nick, err := b.pollService.GetDisplayNick(v.TgUserID, v.TgUsername)
@@ -169,10 +170,8 @@ func (b *Bot) enrichVotesWithNicknames(votes []*poll.Vote) {
 		if nick != "" {
 			// Store nickname in TgFirstName for display (Vote.DisplayName() will use it)
 			v.TgFirstName = nick
-			// Clear username so DisplayName() uses TgFirstName
-			if !v.IsManual {
-				v.TgUsername = ""
-			}
+			// Clear username so DisplayName() uses TgFirstName (nickname)
+			v.TgUsername = ""
 		}
 	}
 }
