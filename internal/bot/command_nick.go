@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -108,7 +109,10 @@ func (b *Bot) handleNick(c tele.Context) error {
 func (b *Bot) refreshInvitationMessage(chatID int64) error {
 	p, err := b.pollService.GetActivePoll(chatID)
 	if err != nil {
-		return nil // No active poll is fine
+		if errors.Is(err, poll.ErrNoActivePoll) {
+			return nil // No active poll is fine
+		}
+		return err // Propagate real errors
 	}
 
 	if p.TgResultsMessageID == 0 {
