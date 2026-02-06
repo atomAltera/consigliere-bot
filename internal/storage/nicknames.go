@@ -3,6 +3,7 @@ package storage
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -14,19 +15,19 @@ func NewNicknameRepository(db *DB) *NicknameRepository {
 	return &NicknameRepository{db: db}
 }
 
-// Create inserts a new nickname record if the exact combination doesn't already exist.
-// Returns true if inserted, false if duplicate.
+// isUniqueConstraintError checks if the error is a SQLite unique constraint violation.
+func isUniqueConstraintError(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "UNIQUE constraint failed")
+}
+
+// Create inserts a new nickname record if game_nick is not already taken.
+// Returns true if inserted, false if game_nick is already used by another player.
 func (r *NicknameRepository) Create(tgUserID *int64, tgUsername *string, gameNick string) (bool, error) {
-	// Check for existing duplicate
+	// Check if game_nick is already taken (globally unique)
 	var exists bool
 	err := r.db.db.QueryRow(`
-		SELECT EXISTS(
-			SELECT 1 FROM nicknames
-			WHERE (tg_user_id = ? OR (tg_user_id IS NULL AND ? IS NULL))
-			  AND (tg_username = ? OR (tg_username IS NULL AND ? IS NULL))
-			  AND game_nick = ?
-		)
-	`, tgUserID, tgUserID, tgUsername, tgUsername, gameNick).Scan(&exists)
+		SELECT EXISTS(SELECT 1 FROM nicknames WHERE game_nick = ?)
+	`, gameNick).Scan(&exists)
 	if err != nil {
 		return false, fmt.Errorf("check duplicate: %w", err)
 	}
@@ -39,6 +40,10 @@ func (r *NicknameRepository) Create(tgUserID *int64, tgUsername *string, gameNic
 		VALUES (?, ?, ?, ?)
 	`, tgUserID, tgUsername, gameNick, time.Now())
 	if err != nil {
+		// Handle unique constraint violation (race condition)
+		if isUniqueConstraintError(err) {
+			return false, nil
+		}
 		return false, fmt.Errorf("insert nickname: %w", err)
 	}
 	return true, nil

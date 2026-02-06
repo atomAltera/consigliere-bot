@@ -80,7 +80,7 @@ func (d *DB) Migrate() error {
 
 	CREATE INDEX IF NOT EXISTS idx_nicknames_tg_user_id ON nicknames(tg_user_id);
 	CREATE INDEX IF NOT EXISTS idx_nicknames_tg_username ON nicknames(tg_username);
-	CREATE INDEX IF NOT EXISTS idx_nicknames_game_nick ON nicknames(game_nick);
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_nicknames_game_nick_unique ON nicknames(game_nick);
 	`
 
 	_, err := d.db.Exec(schema)
