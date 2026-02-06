@@ -1,6 +1,6 @@
-🎉 <b>{{ .EventDate | ruDate }}</b>
+🎉 <b>Стол собран!</b>
 
-Набор на игру завершён! Начинаем в <b>{{ .StartTime }}</b>.
+🗓️ <b>{{ .EventDate | ruDate }}</b>, начинаем в <b>{{ .StartTime }}</b>.
 
 {{ .Members | formatCollectedMembers }}
 {{- if .ComingLater }}
