@@ -143,6 +143,26 @@ func formatNickList(members []Member) string {
 	return strings.Join(names, ", ")
 }
 
+// formatResultsVoter formats a single ResultsVoter for the /results admin display.
+// Output format: • <code>TgID</code> @username Name → Nickname
+func formatResultsVoter(v ResultsVoter) string {
+	var b strings.Builder
+	b.WriteString("• <code>")
+	b.WriteString(fmt.Sprintf("%d", v.TgID))
+	b.WriteString("</code>")
+	if v.TgUsername != "" {
+		b.WriteString(" @")
+		b.WriteString(v.TgUsername)
+	}
+	b.WriteString(" ")
+	b.WriteString(v.TgName)
+	if v.Nickname != "" {
+		b.WriteString(" → ")
+		b.WriteString(v.Nickname)
+	}
+	return b.String()
+}
+
 var templateFuncs = template.FuncMap{
 	"ruDate":                 FormatDateRussian,
 	"ruDateShort":            formatDateRussianShort,
@@ -150,6 +170,7 @@ var templateFuncs = template.FuncMap{
 	"formatMentions":         formatMentions,
 	"formatCollectedMembers": formatCollectedMembers,
 	"formatNickList":         formatNickList,
+	"formatResultsVoter":     formatResultsVoter,
 }
 
 // InitTemplates initializes all templates. Must be called before using any Render* functions.

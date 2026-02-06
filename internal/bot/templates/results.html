@@ -4,27 +4,27 @@
 
 <b>🕖 19:00 ({{len .At19}}):</b>
 {{- range .At19}}
-• <code>{{.TgID}}</code> {{if .TgUsername}}@{{.TgUsername}}{{end}} {{.TgName}}{{if .Nickname}} → {{.Nickname}}{{end}}
+{{. | formatResultsVoter}}
 {{- end}}
 {{- end}}
 {{- if .At20}}
 
 <b>🕗 20:00 ({{len .At20}}):</b>
 {{- range .At20}}
-• <code>{{.TgID}}</code> {{if .TgUsername}}@{{.TgUsername}}{{end}} {{.TgName}}{{if .Nickname}} → {{.Nickname}}{{end}}
+{{. | formatResultsVoter}}
 {{- end}}
 {{- end}}
 {{- if .ComingLater}}
 
 <b>🕘 21:00+ ({{len .ComingLater}}):</b>
 {{- range .ComingLater}}
-• <code>{{.TgID}}</code> {{if .TgUsername}}@{{.TgUsername}}{{end}} {{.TgName}}{{if .Nickname}} → {{.Nickname}}{{end}}
+{{. | formatResultsVoter}}
 {{- end}}
 {{- end}}
 {{- if .Undecided}}
 
 <b>🤔 Думают ({{len .Undecided}}):</b>
 {{- range .Undecided}}
-• <code>{{.TgID}}</code> {{if .TgUsername}}@{{.TgUsername}}{{end}} {{.TgName}}{{if .Nickname}} → {{.Nickname}}{{end}}
+{{. | formatResultsVoter}}
 {{- end}}
 {{- end}}
