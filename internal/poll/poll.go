@@ -7,6 +7,9 @@ type Poll struct {
 	TgChatID           int64
 	TgPollID           string
 	TgMessageID        int
+	// TgResultsMessageID stores the invitation message ID (the persistent message
+	// that displays current votes and updates as users vote). Named "results" for
+	// historical reasons; /results command sends a separate temporary message.
 	TgResultsMessageID int
 	TgCancelMessageID  int
 	EventDate          time.Time
