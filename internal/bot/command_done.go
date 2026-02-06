@@ -61,9 +61,10 @@ func (b *Bot) handleDone(c tele.Context) error {
 
 	// Render and send collected message
 	html, err := RenderCollectedMessage(&CollectedData{
-		EventDate: p.EventDate,
-		StartTime: startTime,
-		Members:   MembersFromVotes(votesToMention),
+		EventDate:   p.EventDate,
+		StartTime:   startTime,
+		Members:     b.membersFromVotesWithNicknames(votesToMention),
+		ComingLater: b.membersFromVotesWithNicknames(data.Votes21),
 	})
 	if err != nil {
 		return WrapUserError(MsgFailedRenderCollected, err)

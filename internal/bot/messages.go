@@ -13,6 +13,8 @@ const (
 	MsgInvalidVoteOption  = "Неверная опция. Используйте 1-5:\n1=19:00, 2=20:00, 3=21:00+, 4=решу позже, 5=не приду"
 	MsgNoUndecidedVoters  = "Нет участников, которые ещё не определились"
 	MsgNotEnoughPlayers   = "Недостаточно игроков. Нужно минимум 11 человек на 19:00 и 20:00"
+	MsgNickUsage     = "Использование: /nick @username игровой_ник или /nick 123456 игровой_ник"
+	MsgNickDuplicate = "Такая связка уже существует"
 )
 
 // System error messages (internal errors, hide details from user)
@@ -42,10 +44,13 @@ const (
 	MsgFailedSendCall           = "Не удалось отправить сообщение"
 	MsgFailedRenderCollected    = "Не удалось сформировать сообщение о наборе"
 	MsgFailedSendCollected      = "Не удалось отправить сообщение о наборе"
+	MsgFailedSaveNick           = "Не удалось сохранить ник"
 )
 
 // Format strings for dynamic messages
 const (
-	MsgFmtEventCancelled = "⚠️ Игра %s отменена"
-	MsgFmtVoteRecorded   = "Записан голос за %s: %s"
+	MsgFmtEventCancelled   = "⚠️ Игра %s отменена"
+	MsgFmtVoteRecorded     = "Записан голос за %s: %s"
+	MsgFmtNickCreated      = "Ник сохранён: %s → %s"
+	MsgFmtNickCreatedByID  = "Ник сохранён: ID %d → %s"
 )

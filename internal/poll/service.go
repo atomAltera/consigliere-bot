@@ -13,15 +13,28 @@ type PollRepository interface {
 type VoteRepository interface {
 	Record(v *Vote) error
 	GetCurrentVotes(pollID int64) ([]*Vote, error)
+	LookupUserIDByUsername(username string) (int64, bool, error)
+	UpdateVotesUserID(pollID int64, oldUserID, newUserID int64) error
+}
+
+type NicknameRepository interface {
+	Create(tgUserID *int64, tgUsername *string, gameNick string) (bool, error)
+	FindByGameNick(gameNick string) (tgUserID *int64, tgUsername *string, err error)
+	FindByTgUsername(username string) (gameNick string, tgUserID *int64, err error)
+	FindByTgUserID(userID int64) (gameNick string, err error)
+	GetDisplayNick(userID int64, username string) (string, error)
+	UpdateUserIDByUsername(username string, userID int64) error
+	GetAllGameNicksForUser(userID int64, username string) ([]string, error)
 }
 
 type Service struct {
-	polls PollRepository
-	votes VoteRepository
+	polls     PollRepository
+	votes     VoteRepository
+	nicknames NicknameRepository
 }
 
-func NewService(polls PollRepository, votes VoteRepository) *Service {
-	return &Service{polls: polls, votes: votes}
+func NewService(polls PollRepository, votes VoteRepository, nicknames NicknameRepository) *Service {
+	return &Service{polls: polls, votes: votes, nicknames: nicknames}
 }
 
 // CreatePoll creates a new poll for the given chat and event date.
@@ -167,6 +180,129 @@ func (s *Service) RecordVote(v *Vote) error {
 	return s.votes.Record(v)
 }
 
+// CreateNickname creates a new nickname mapping.
+// If tgUsername is provided, attempts to look up the user ID from voting history.
+// Returns true if created, false if duplicate.
+func (s *Service) CreateNickname(tgUserID *int64, tgUsername *string, gameNick string) (bool, error) {
+	// If username provided but no user ID, try to look up from votes
+	if tgUserID == nil && tgUsername != nil {
+		if userID, found, err := s.votes.LookupUserIDByUsername(*tgUsername); err != nil {
+			return false, err
+		} else if found {
+			tgUserID = &userID
+		}
+	}
+
+	return s.nicknames.Create(tgUserID, tgUsername, gameNick)
+}
+
+// ResolveVoteIdentifier resolves a vote identifier to user information.
+// If identifier starts with @, treats it as telegram username.
+// Otherwise, treats it as a game nickname.
+// Returns: userID (0 if unknown), username, displayName, error
+func (s *Service) ResolveVoteIdentifier(identifier string) (int64, string, string, error) {
+	if len(identifier) > 0 && identifier[0] == '@' {
+		// Telegram username
+		username := identifier[1:]
+		nick, userID, err := s.nicknames.FindByTgUsername(username)
+		if err != nil {
+			return 0, "", "", err
+		}
+		if userID != nil {
+			// Have both user ID and nickname
+			displayName := nick
+			if displayName == "" {
+				displayName = username
+			}
+			return *userID, username, displayName, nil
+		}
+		// No nickname record, try to get user ID from votes
+		if id, found, err := s.votes.LookupUserIDByUsername(username); err != nil {
+			return 0, "", "", err
+		} else if found {
+			return id, username, username, nil
+		}
+		// Unknown user, use synthetic ID
+		return ManualUserID(username), username, username, nil
+	}
+
+	// Game nickname - look up in nicknames table
+	userID, username, err := s.nicknames.FindByGameNick(identifier)
+	if err != nil {
+		return 0, "", "", err
+	}
+	if userID == nil && username == nil {
+		// Not found in nicknames - use synthetic ID with game nick as display name
+		return ManualUserID(identifier), "", identifier, nil
+	}
+
+	// Found a match
+	if userID != nil {
+		var uname string
+		if username != nil {
+			uname = *username
+		}
+		return *userID, uname, identifier, nil
+	}
+
+	// Have username but no user ID - try votes lookup
+	if id, found, err := s.votes.LookupUserIDByUsername(*username); err != nil {
+		return 0, "", "", err
+	} else if found {
+		return id, *username, identifier, nil
+	}
+	return ManualUserID(*username), *username, identifier, nil
+}
+
+// BackfillVotesForNickname updates votes in the active poll to use the canonical user ID.
+// Called after creating a nickname to consolidate votes.
+func (s *Service) BackfillVotesForNickname(chatID int64, tgUserID int64, tgUsername string, gameNicks []string) error {
+	// Get active poll
+	p, err := s.polls.GetLatestActive(chatID)
+	if err != nil || p == nil {
+		return err // No active poll, nothing to backfill
+	}
+
+	// Update votes by username (only for this poll)
+	if tgUsername != "" {
+		// Find synthetic ID for username and update
+		syntheticID := ManualUserID(tgUsername)
+		if err := s.votes.UpdateVotesUserID(p.ID, syntheticID, tgUserID); err != nil {
+			return err
+		}
+	}
+
+	// Update votes by game nicks (only for this poll)
+	for _, nick := range gameNicks {
+		syntheticID := ManualUserID(nick)
+		if err := s.votes.UpdateVotesUserID(p.ID, syntheticID, tgUserID); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// BackfillNicknameUserID updates nickname records when we learn a user's ID from their vote.
+func (s *Service) BackfillNicknameUserID(username string, userID int64) error {
+	return s.nicknames.UpdateUserIDByUsername(username, userID)
+}
+
+// GetDisplayNick returns the game nickname for a user, if one exists.
+func (s *Service) GetDisplayNick(userID int64, username string) (string, error) {
+	return s.nicknames.GetDisplayNick(userID, username)
+}
+
+// GetAllGameNicksForUser returns all game nicks for a user.
+func (s *Service) GetAllGameNicksForUser(userID int64, username string) ([]string, error) {
+	return s.nicknames.GetAllGameNicksForUser(userID, username)
+}
+
+// LookupUserIDByUsername finds a user ID from vote history by username.
+func (s *Service) LookupUserIDByUsername(username string) (int64, bool, error) {
+	return s.votes.LookupUserIDByUsername(username)
+}
+
 // InvitationData holds data for the invitation message template
 type InvitationData struct {
 	Poll         *Poll
@@ -215,9 +351,10 @@ func (s *Service) GetUndecidedVotes(pollID int64) ([]*Vote, error) {
 type CollectedData struct {
 	Votes19 []*Vote // voters for 19:00
 	Votes20 []*Vote // voters for 20:00
+	Votes21 []*Vote // voters for 21:00+
 }
 
-// GetCollectedData returns votes for 19:00 and 20:00 options
+// GetCollectedData returns votes for 19:00, 20:00, and 21:00+ options
 func (s *Service) GetCollectedData(pollID int64) (*CollectedData, error) {
 	votes, err := s.votes.GetCurrentVotes(pollID)
 	if err != nil {
@@ -227,6 +364,7 @@ func (s *Service) GetCollectedData(pollID int64) (*CollectedData, error) {
 	data := &CollectedData{
 		Votes19: []*Vote{},
 		Votes20: []*Vote{},
+		Votes21: []*Vote{},
 	}
 
 	for _, v := range votes {
@@ -235,6 +373,8 @@ func (s *Service) GetCollectedData(pollID int64) (*CollectedData, error) {
 			data.Votes19 = append(data.Votes19, v)
 		case OptionComeAt20:
 			data.Votes20 = append(data.Votes20, v)
+		case OptionComeAt21OrLater:
+			data.Votes21 = append(data.Votes21, v)
 		}
 	}
 

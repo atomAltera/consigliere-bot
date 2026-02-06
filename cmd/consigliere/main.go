@@ -90,9 +90,10 @@ func main() {
 	// Create repositories
 	pollRepo := storage.NewPollRepository(db)
 	voteRepo := storage.NewVoteRepository(db)
+	nickRepo := storage.NewNicknameRepository(db)
 
 	// Create service
-	pollService := poll.NewService(pollRepo, voteRepo)
+	pollService := poll.NewService(pollRepo, voteRepo, nickRepo)
 
 	// Create and start bot
 	b, err := bot.New(cfg, pollService, appLog)

@@ -15,7 +15,8 @@
       "mcp__fetch__fetch",
       "Bash(cat:*)",
       "Bash(go get:*)",
-      "Bash(xargs cat:*)"
+      "Bash(xargs cat:*)",
+      "Bash(mkdir:*)"
     ]
   }
 }

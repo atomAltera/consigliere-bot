@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -62,4 +63,34 @@ func (r *VoteRepository) GetCurrentVotes(pollID int64) ([]*poll.Vote, error) {
 	}
 
 	return votes, rows.Err()
+}
+
+// LookupUserIDByUsername returns the user ID for a given username from voting history.
+// Returns the user ID, true if found, or 0, false if not found.
+func (r *VoteRepository) LookupUserIDByUsername(username string) (int64, bool, error) {
+	var userID int64
+	err := r.db.db.QueryRow(`
+		SELECT DISTINCT tg_user_id FROM votes
+		WHERE tg_username = ? AND tg_user_id > 0
+		LIMIT 1
+	`, username).Scan(&userID)
+	if err == sql.ErrNoRows {
+		return 0, false, nil
+	}
+	if err != nil {
+		return 0, false, fmt.Errorf("lookup user id by username: %w", err)
+	}
+	return userID, true, nil
+}
+
+// UpdateVotesUserID updates votes with oldUserID to use newUserID for a specific poll.
+// Used for backfilling votes when nickname is set. Only affects the specified poll.
+func (r *VoteRepository) UpdateVotesUserID(pollID int64, oldUserID, newUserID int64) error {
+	_, err := r.db.db.Exec(`
+		UPDATE votes SET tg_user_id = ? WHERE poll_id = ? AND tg_user_id = ?
+	`, newUserID, pollID, oldUserID)
+	if err != nil {
+		return fmt.Errorf("update votes user id: %w", err)
+	}
+	return nil
 }

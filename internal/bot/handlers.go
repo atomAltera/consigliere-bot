@@ -59,6 +59,13 @@ func (b *Bot) handlePollAnswer(c tele.Context) error {
 		return fmt.Errorf("record vote: %w", err)
 	}
 
+	// Backfill nickname user ID if user has a username
+	if answer.Sender.Username != "" {
+		if err := b.pollService.BackfillNicknameUserID(answer.Sender.Username, answer.Sender.ID); err != nil {
+			b.logger.Warn("failed to backfill nickname user id", "error", err)
+		}
+	}
+
 	// Update invitation message if exists
 	if p.TgResultsMessageID != 0 {
 		results, err := b.pollService.GetInvitationData(p.ID)
@@ -69,7 +76,7 @@ func (b *Bot) handlePollAnswer(c tele.Context) error {
 		results.EventDate = p.EventDate
 		results.IsCancelled = !p.IsActive
 
-		html, err := RenderInvitation(results)
+		html, err := b.RenderInvitationWithNicks(results)
 		if err != nil {
 			return fmt.Errorf("render invitation: %w", err)
 		}

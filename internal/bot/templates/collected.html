@@ -2,4 +2,8 @@
 
 Набор на игру завершён! Начинаем в <b>{{ .StartTime }}</b>.
 
-{{ .Members | formatMembers }}
+{{ .Members | formatCollectedMembers }}
+{{- if .ComingLater }}
+
+<b>Позже:</b> {{ .ComingLater | formatNickList }}
+{{- end }}

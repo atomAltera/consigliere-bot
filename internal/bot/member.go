@@ -12,15 +12,27 @@ type Member struct {
 }
 
 // DisplayName returns the best available display name for the member.
-// Priority: @username > TgName > Nickname
+// Priority: Nickname > TgName > @username (prefers game nick for display)
 func (m Member) DisplayName() string {
-	if m.TgUsername != "" {
-		return "@" + m.TgUsername
+	if m.Nickname != "" {
+		return m.Nickname
 	}
 	if m.TgName != "" {
 		return m.TgName
 	}
-	return m.Nickname
+	if m.TgUsername != "" {
+		return "@" + m.TgUsername
+	}
+	return ""
+}
+
+// MentionName returns the name suitable for @mentions (telegram identity).
+// Priority: @username > TgName (needs telegram handle for clickable mentions)
+func (m Member) MentionName() string {
+	if m.TgUsername != "" {
+		return "@" + m.TgUsername
+	}
+	return m.TgName
 }
 
 // MemberFromVote creates a Member from a Vote.

@@ -75,10 +75,49 @@ func (m *mockVoteRepo) GetCurrentVotes(pollID int64) ([]*Vote, error) {
 	return result, nil
 }
 
+func (m *mockVoteRepo) LookupUserIDByUsername(username string) (int64, bool, error) {
+	return 0, false, nil
+}
+
+func (m *mockVoteRepo) UpdateVotesUserID(pollID int64, oldUserID, newUserID int64) error {
+	return nil
+}
+
+type mockNicknameRepo struct{}
+
+func (m *mockNicknameRepo) Create(tgUserID *int64, tgUsername *string, gameNick string) (bool, error) {
+	return true, nil
+}
+
+func (m *mockNicknameRepo) FindByGameNick(gameNick string) (*int64, *string, error) {
+	return nil, nil, nil
+}
+
+func (m *mockNicknameRepo) FindByTgUsername(username string) (string, *int64, error) {
+	return "", nil, nil
+}
+
+func (m *mockNicknameRepo) FindByTgUserID(userID int64) (string, error) {
+	return "", nil
+}
+
+func (m *mockNicknameRepo) GetDisplayNick(userID int64, username string) (string, error) {
+	return "", nil
+}
+
+func (m *mockNicknameRepo) UpdateUserIDByUsername(username string, userID int64) error {
+	return nil
+}
+
+func (m *mockNicknameRepo) GetAllGameNicksForUser(userID int64, username string) ([]string, error) {
+	return nil, nil
+}
+
 func TestService_CreatePoll(t *testing.T) {
 	pollRepo := &mockPollRepo{polls: make(map[int64]*Poll)}
 	voteRepo := &mockVoteRepo{}
-	svc := NewService(pollRepo, voteRepo)
+	nickRepo := &mockNicknameRepo{}
+	svc := NewService(pollRepo, voteRepo, nickRepo)
 
 	result, err := svc.CreatePoll(-123456, time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC))
 	if err != nil {
@@ -95,7 +134,8 @@ func TestService_CreatePoll(t *testing.T) {
 func TestService_GetInvitationData(t *testing.T) {
 	pollRepo := &mockPollRepo{polls: make(map[int64]*Poll)}
 	voteRepo := &mockVoteRepo{}
-	svc := NewService(pollRepo, voteRepo)
+	nickRepo := &mockNicknameRepo{}
+	svc := NewService(pollRepo, voteRepo, nickRepo)
 
 	result, _ := svc.CreatePoll(-123456, time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC))
 	p := result.Poll
@@ -127,7 +167,8 @@ func TestService_GetInvitationData(t *testing.T) {
 func TestIntegration_PollVoteResultsFlow(t *testing.T) {
 	pollRepo := &mockPollRepo{polls: make(map[int64]*Poll)}
 	voteRepo := &mockVoteRepo{}
-	svc := NewService(pollRepo, voteRepo)
+	nickRepo := &mockNicknameRepo{}
+	svc := NewService(pollRepo, voteRepo, nickRepo)
 
 	chatID := int64(-123456)
 	futureDate := time.Now().AddDate(0, 0, 7) // 1 week from now
@@ -194,7 +235,8 @@ func TestIntegration_PollVoteResultsFlow(t *testing.T) {
 func TestIntegration_CancelRestoreFlow(t *testing.T) {
 	pollRepo := &mockPollRepo{polls: make(map[int64]*Poll)}
 	voteRepo := &mockVoteRepo{}
-	svc := NewService(pollRepo, voteRepo)
+	nickRepo := &mockNicknameRepo{}
+	svc := NewService(pollRepo, voteRepo, nickRepo)
 
 	chatID := int64(-123456)
 	futureDate := time.Now().AddDate(0, 0, 7) // 1 week from now
@@ -246,7 +288,8 @@ func TestIntegration_CancelRestoreFlow(t *testing.T) {
 func TestIntegration_DuplicatePollPrevention(t *testing.T) {
 	pollRepo := &mockPollRepo{polls: make(map[int64]*Poll)}
 	voteRepo := &mockVoteRepo{}
-	svc := NewService(pollRepo, voteRepo)
+	nickRepo := &mockNicknameRepo{}
+	svc := NewService(pollRepo, voteRepo, nickRepo)
 
 	chatID := int64(-123456)
 	futureDate := time.Now().AddDate(0, 0, 7)
@@ -268,7 +311,8 @@ func TestIntegration_DuplicatePollPrevention(t *testing.T) {
 func TestIntegration_GetVotes(t *testing.T) {
 	pollRepo := &mockPollRepo{polls: make(map[int64]*Poll)}
 	voteRepo := &mockVoteRepo{}
-	svc := NewService(pollRepo, voteRepo)
+	nickRepo := &mockNicknameRepo{}
+	svc := NewService(pollRepo, voteRepo, nickRepo)
 
 	chatID := int64(-123456)
 	futureDate := time.Now().AddDate(0, 0, 7)

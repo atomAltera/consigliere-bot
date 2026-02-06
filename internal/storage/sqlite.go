@@ -68,6 +68,19 @@ func (d *DB) Migrate() error {
 
 	CREATE INDEX IF NOT EXISTS idx_votes_poll_id ON votes(poll_id);
 	CREATE INDEX IF NOT EXISTS idx_votes_user_latest ON votes(poll_id, tg_user_id, voted_at DESC);
+	CREATE INDEX IF NOT EXISTS idx_votes_tg_username ON votes(tg_username);
+
+	CREATE TABLE IF NOT EXISTS nicknames (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		tg_user_id INTEGER,
+		tg_username TEXT,
+		game_nick TEXT NOT NULL,
+		created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_nicknames_tg_user_id ON nicknames(tg_user_id);
+	CREATE INDEX IF NOT EXISTS idx_nicknames_tg_username ON nicknames(tg_username);
+	CREATE INDEX IF NOT EXISTS idx_nicknames_game_nick ON nicknames(game_nick);
 	`
 
 	_, err := d.db.Exec(schema)

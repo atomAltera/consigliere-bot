@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"strings"
 
 	tele "gopkg.in/telebot.v4"
 
@@ -12,7 +11,11 @@ import (
 )
 
 // handleVote manually records a vote for a user
-// Usage: /vote @username <option number 1-5>
+// Usage:
+//
+//	/vote @username <option 1-5> — vote by telegram username
+//	/vote gamenick <option 1-5>  — vote by game nickname (no @ prefix)
+//
 // Options: 1=19:00, 2=20:00, 3=21:00+, 4=decide later, 5=not coming
 func (b *Bot) handleVote(c tele.Context) error {
 	args := c.Args()
@@ -20,9 +23,8 @@ func (b *Bot) handleVote(c tele.Context) error {
 		return UserErrorf(MsgVoteUsage)
 	}
 
-	// Parse username (remove @ prefix if present)
-	username := strings.TrimPrefix(args[0], "@")
-	if username == "" {
+	identifier := args[0]
+	if identifier == "" {
 		return UserErrorf(MsgInvalidUsername)
 	}
 
@@ -35,11 +37,20 @@ func (b *Bot) handleVote(c tele.Context) error {
 	// Convert to 0-indexed option
 	optionIndex := optionNum - 1
 
+	// Resolve the identifier to user info
+	userID, username, displayName, err := b.pollService.ResolveVoteIdentifier(identifier)
+	if err != nil {
+		return WrapUserError(MsgFailedRecordVote, err)
+	}
+
 	b.logger.Info("command /vote",
 		"user_id", c.Sender().ID,
 		"username", c.Sender().Username,
 		"chat_id", c.Chat().ID,
-		"target_username", username,
+		"identifier", identifier,
+		"resolved_user_id", userID,
+		"resolved_username", username,
+		"display_name", displayName,
 		"option", OptionLabel(poll.OptionKind(optionIndex)),
 	)
 
@@ -57,12 +68,12 @@ func (b *Bot) handleVote(c tele.Context) error {
 		return UserErrorf(MsgPollDatePassed)
 	}
 
-	// Create manual vote with synthetic user ID
+	// Create vote with resolved user ID
 	v := &poll.Vote{
 		PollID:        p.ID,
-		TgUserID:      poll.ManualUserID(username),
+		TgUserID:      userID,
 		TgUsername:    username,
-		TgFirstName:   username, // Use username as first name for display
+		TgFirstName:   displayName,
 		TgOptionIndex: optionIndex,
 		IsManual:      true,
 	}
@@ -81,7 +92,7 @@ func (b *Bot) handleVote(c tele.Context) error {
 		results.EventDate = p.EventDate
 		results.IsCancelled = !p.IsActive
 
-		html, err := RenderInvitation(results)
+		html, err := b.RenderInvitationWithNicks(results)
 		if err != nil {
 			return WrapUserError(MsgFailedRenderResults, err)
 		}
@@ -93,6 +104,6 @@ func (b *Bot) handleVote(c tele.Context) error {
 		}
 	}
 
-	_, err = b.SendTemporary(c.Chat(), fmt.Sprintf(MsgFmtVoteRecorded, username, OptionLabel(poll.OptionKind(optionIndex))), 0)
+	_, err = b.SendTemporary(c.Chat(), fmt.Sprintf(MsgFmtVoteRecorded, displayName, OptionLabel(poll.OptionKind(optionIndex))), 0)
 	return err
 }

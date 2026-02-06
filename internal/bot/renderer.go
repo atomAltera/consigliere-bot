@@ -23,6 +23,7 @@ var cancelTmpl *template.Template
 var restoreTmpl *template.Template
 var callTmpl *template.Template
 var collectedTmpl *template.Template
+var resultsTmpl *template.Template
 
 // Russian weekday names
 var russianWeekdays = []string{
@@ -66,7 +67,7 @@ func formatDateRussianShort(t time.Time) string {
 	return fmt.Sprintf("%d %s", t.Day(), month)
 }
 
-// formatMembers formats a slice of Members as space-separated mentions
+// formatMembers formats a slice of Members as space-separated display names
 func formatMembers(members []Member) string {
 	if len(members) == 0 {
 		return ""
@@ -80,10 +81,75 @@ func formatMembers(members []Member) string {
 	return strings.Join(names, " ")
 }
 
+// formatMentions formats a slice of Members as space-separated @mentions
+func formatMentions(members []Member) string {
+	if len(members) == 0 {
+		return ""
+	}
+	names := make([]string, 0, len(members))
+	for _, m := range members {
+		if name := m.MentionName(); name != "" {
+			names = append(names, name)
+		}
+	}
+	return strings.Join(names, " ")
+}
+
+// formatCollectedMembers formats members for the /done message.
+// Shows numbered list with @username and nickname on each line.
+func formatCollectedMembers(members []Member) string {
+	if len(members) == 0 {
+		return ""
+	}
+	lines := make([]string, 0, len(members))
+	for i, m := range members {
+		var line string
+		if m.TgUsername != "" {
+			line = "@" + m.TgUsername
+			if m.Nickname != "" {
+				line += " " + m.Nickname
+			}
+		} else if m.Nickname != "" {
+			line = m.Nickname
+		} else if m.TgName != "" {
+			line = m.TgName
+		}
+		if line != "" {
+			lines = append(lines, fmt.Sprintf("%d. %s", i+1, line))
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+// formatNickList formats members as comma-separated nicks (or names if no nick).
+func formatNickList(members []Member) string {
+	if len(members) == 0 {
+		return ""
+	}
+	names := make([]string, 0, len(members))
+	for _, m := range members {
+		var name string
+		if m.Nickname != "" {
+			name = m.Nickname
+		} else if m.TgName != "" {
+			name = m.TgName
+		} else if m.TgUsername != "" {
+			name = "@" + m.TgUsername
+		}
+		if name != "" {
+			names = append(names, name)
+		}
+	}
+	return strings.Join(names, ", ")
+}
+
 var templateFuncs = template.FuncMap{
-	"ruDate":        FormatDateRussian,
-	"ruDateShort":   formatDateRussianShort,
-	"formatMembers": formatMembers,
+	"ruDate":                 FormatDateRussian,
+	"ruDateShort":            formatDateRussianShort,
+	"formatMembers":          formatMembers,
+	"formatMentions":         formatMentions,
+	"formatCollectedMembers": formatCollectedMembers,
+	"formatNickList":         formatNickList,
 }
 
 // InitTemplates initializes all templates. Must be called before using any Render* functions.
@@ -112,6 +178,10 @@ func InitTemplates() error {
 	collectedTmpl, err = template.New("collected.html").Funcs(templateFuncs).ParseFS(templates, "templates/collected.html")
 	if err != nil {
 		return fmt.Errorf("parse collected template: %w", err)
+	}
+	resultsTmpl, err = template.New("results.html").Funcs(templateFuncs).ParseFS(templates, "templates/results.html")
+	if err != nil {
+		return fmt.Errorf("parse results template: %w", err)
 	}
 	return nil
 }
@@ -243,15 +313,42 @@ func HelpMessage() (string, error) {
 
 // CollectedData holds data for the collected message template
 type CollectedData struct {
-	EventDate time.Time
-	StartTime string // e.g., "19:00" or "20:00"
-	Members   []Member
+	EventDate   time.Time
+	StartTime   string // e.g., "19:00" or "20:00"
+	Members     []Member
+	ComingLater []Member // Players coming at 21:00+
 }
 
 // RenderCollectedMessage renders the "players collected" notification message.
 func RenderCollectedMessage(data *CollectedData) (string, error) {
 	var buf bytes.Buffer
 	if err := collectedTmpl.Execute(&buf, data); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
+
+// ResultsVoter holds voter info for the /results admin display
+type ResultsVoter struct {
+	TgID       int64
+	TgUsername string
+	TgName     string
+	Nickname   string
+}
+
+// ResultsData holds data for the results admin message template
+type ResultsData struct {
+	EventDate   time.Time
+	At19        []ResultsVoter
+	At20        []ResultsVoter
+	ComingLater []ResultsVoter
+	Undecided   []ResultsVoter
+}
+
+// RenderResultsMessage renders the admin results message.
+func RenderResultsMessage(data *ResultsData) (string, error) {
+	var buf bytes.Buffer
+	if err := resultsTmpl.Execute(&buf, data); err != nil {
 		return "", err
 	}
 	return buf.String(), nil
