@@ -113,6 +113,10 @@ func (m *mockNicknameRepo) GetAllGameNicksForUser(userID int64, username string)
 	return nil, nil
 }
 
+func (m *mockNicknameRepo) GetDisplayNicksBatch(keys []NicknameLookupKey) (map[int64]string, map[string]string, error) {
+	return make(map[int64]string), make(map[string]string), nil
+}
+
 func TestService_CreatePoll(t *testing.T) {
 	pollRepo := &mockPollRepo{polls: make(map[int64]*Poll)}
 	voteRepo := &mockVoteRepo{}

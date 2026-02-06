@@ -34,13 +34,26 @@ func (b *Bot) handleResults(c tele.Context) error {
 		return WrapUserError(MsgFailedGetResults, err)
 	}
 
+	// Collect all votes for batch nickname lookup
+	allVotes := make([]*poll.Vote, 0, len(invData.Participants)+len(invData.ComingLater)+len(invData.Undecided))
+	allVotes = append(allVotes, invData.Participants...)
+	allVotes = append(allVotes, invData.ComingLater...)
+	allVotes = append(allVotes, invData.Undecided...)
+
+	// Pre-fetch all nicknames in one batch
+	cache, err := b.pollService.NewNicknameCacheFromVotes(allVotes)
+	if err != nil {
+		b.logger.Warn("failed to batch fetch nicknames for results", "error", err)
+		// Continue without nicknames - cache will be nil
+	}
+
 	// Convert votes to ResultsVoter for detailed display
 	resultsData := &ResultsData{
 		EventDate:   p.EventDate,
-		At19:        b.votesToResultsVoters(invData.Participants, poll.OptionComeAt19),
-		At20:        b.votesToResultsVoters(invData.Participants, poll.OptionComeAt20),
-		ComingLater: b.votesToResultsVotersAll(invData.ComingLater),
-		Undecided:   b.votesToResultsVotersAll(invData.Undecided),
+		At19:        b.votesToResultsVotersWithCache(invData.Participants, poll.OptionComeAt19, cache),
+		At20:        b.votesToResultsVotersWithCache(invData.Participants, poll.OptionComeAt20, cache),
+		ComingLater: b.votesToResultsVotersAllWithCache(invData.ComingLater, cache),
+		Undecided:   b.votesToResultsVotersAllWithCache(invData.Undecided, cache),
 	}
 
 	// Render results message
@@ -54,43 +67,42 @@ func (b *Bot) handleResults(c tele.Context) error {
 	return err
 }
 
-// votesToResultsVoters converts votes to ResultsVoter, filtering by option.
-func (b *Bot) votesToResultsVoters(votes []*poll.Vote, option poll.OptionKind) []ResultsVoter {
+// votesToResultsVotersWithCache converts votes to ResultsVoter, filtering by option.
+// Uses a pre-populated nickname cache to avoid N+1 queries.
+func (b *Bot) votesToResultsVotersWithCache(votes []*poll.Vote, option poll.OptionKind, cache *poll.NicknameCache) []ResultsVoter {
 	var result []ResultsVoter
 	for _, v := range votes {
 		if poll.OptionKind(v.TgOptionIndex) != option {
 			continue
 		}
-		voter := b.voteToResultsVoter(v)
+		voter := b.voteToResultsVoterWithCache(v, cache)
 		result = append(result, voter)
 	}
 	return result
 }
 
-// votesToResultsVotersAll converts all votes to ResultsVoter.
-func (b *Bot) votesToResultsVotersAll(votes []*poll.Vote) []ResultsVoter {
+// votesToResultsVotersAllWithCache converts all votes to ResultsVoter.
+// Uses a pre-populated nickname cache to avoid N+1 queries.
+func (b *Bot) votesToResultsVotersAllWithCache(votes []*poll.Vote, cache *poll.NicknameCache) []ResultsVoter {
 	result := make([]ResultsVoter, 0, len(votes))
 	for _, v := range votes {
-		voter := b.voteToResultsVoter(v)
+		voter := b.voteToResultsVoterWithCache(v, cache)
 		result = append(result, voter)
 	}
 	return result
 }
 
-// voteToResultsVoter converts a single vote to ResultsVoter with nickname lookup.
-func (b *Bot) voteToResultsVoter(v *poll.Vote) ResultsVoter {
+// voteToResultsVoterWithCache converts a single vote to ResultsVoter using cached nickname.
+func (b *Bot) voteToResultsVoterWithCache(v *poll.Vote, cache *poll.NicknameCache) ResultsVoter {
 	voter := ResultsVoter{
 		TgID:       v.TgUserID,
 		TgUsername: v.TgUsername,
 		TgName:     v.TgFirstName,
 	}
 
-	// Look up game nickname
-	nick, err := b.pollService.GetDisplayNick(v.TgUserID, v.TgUsername)
-	if err != nil {
-		b.logger.Warn("failed to get display nick for results", "error", err)
-	} else {
-		voter.Nickname = nick
+	// Get nickname from cache (nil-safe)
+	if cache != nil {
+		voter.Nickname = cache.Get(v.TgUserID, v.TgUsername)
 	}
 
 	return voter

@@ -141,20 +141,31 @@ func (b *Bot) refreshInvitationMessage(chatID int64) error {
 
 // membersFromVotesWithNicknames creates Members from Votes with nicknames looked up.
 // Preserves both TgUsername and Nickname for display.
+// Uses batch lookup to avoid N+1 queries.
 func (b *Bot) membersFromVotesWithNicknames(votes []*poll.Vote) []Member {
 	members := make([]Member, 0, len(votes))
+
+	// Pre-fetch all nicknames in one batch
+	cache, err := b.pollService.NewNicknameCacheFromVotes(votes)
+	if err != nil {
+		b.logger.Warn("failed to batch fetch nicknames", "error", err)
+		// Fallback: return members without nicknames
+		for _, v := range votes {
+			members = append(members, Member{
+				TgID:       v.TgUserID,
+				TgName:     v.TgFirstName,
+				TgUsername: v.TgUsername,
+			})
+		}
+		return members
+	}
+
 	for _, v := range votes {
 		m := Member{
 			TgID:       v.TgUserID,
 			TgName:     v.TgFirstName,
 			TgUsername: v.TgUsername,
-		}
-		// Look up nickname
-		nick, err := b.pollService.GetDisplayNick(v.TgUserID, v.TgUsername)
-		if err != nil {
-			b.logger.Warn("failed to get display nick", "error", err, "user_id", v.TgUserID)
-		} else {
-			m.Nickname = nick
+			Nickname:   cache.Get(v.TgUserID, v.TgUsername),
 		}
 		members = append(members, m)
 	}
@@ -164,13 +175,21 @@ func (b *Bot) membersFromVotesWithNicknames(votes []*poll.Vote) []Member {
 // enrichVotesWithNicknames looks up game nicknames for votes and sets them.
 // Note: This modifies votes in place and clears username for display purposes.
 // When a game nickname is found, it takes priority for both regular and manual votes.
+// Uses batch lookup to avoid N+1 queries.
 func (b *Bot) enrichVotesWithNicknames(votes []*poll.Vote) {
+	if len(votes) == 0 {
+		return
+	}
+
+	// Pre-fetch all nicknames in one batch
+	cache, err := b.pollService.NewNicknameCacheFromVotes(votes)
+	if err != nil {
+		b.logger.Warn("failed to batch fetch nicknames for enrichment", "error", err)
+		return
+	}
+
 	for _, v := range votes {
-		nick, err := b.pollService.GetDisplayNick(v.TgUserID, v.TgUsername)
-		if err != nil {
-			b.logger.Warn("failed to get display nick", "error", err, "user_id", v.TgUserID)
-			continue
-		}
+		nick := cache.Get(v.TgUserID, v.TgUsername)
 		if nick != "" {
 			// Store nickname in TgFirstName for display (Vote.DisplayName() will use it)
 			v.TgFirstName = nick

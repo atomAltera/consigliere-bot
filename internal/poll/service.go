@@ -17,12 +17,19 @@ type VoteRepository interface {
 	UpdateVotesUserID(pollID int64, oldUserID, newUserID int64) error
 }
 
+// NicknameLookupKey represents a user identifier for batch nickname lookups.
+type NicknameLookupKey struct {
+	UserID   int64
+	Username string
+}
+
 type NicknameRepository interface {
 	Create(tgUserID *int64, tgUsername *string, gameNick string) (bool, error)
 	FindByGameNick(gameNick string) (tgUserID *int64, tgUsername *string, err error)
 	FindByTgUsername(username string) (gameNick string, tgUserID *int64, err error)
 	FindByTgUserID(userID int64) (gameNick string, err error)
 	GetDisplayNick(userID int64, username string) (string, error)
+	GetDisplayNicksBatch(keys []NicknameLookupKey) (byUserID map[int64]string, byUsername map[string]string, err error)
 	UpdateUserIDByUsername(username string, userID int64) error
 	GetAllGameNicksForUser(userID int64, username string) ([]string, error)
 }
@@ -296,6 +303,52 @@ func (s *Service) GetDisplayNick(userID int64, username string) (string, error) 
 // GetAllGameNicksForUser returns all game nicks for a user.
 func (s *Service) GetAllGameNicksForUser(userID int64, username string) ([]string, error) {
 	return s.nicknames.GetAllGameNicksForUser(userID, username)
+}
+
+// NicknameCache provides cached nickname lookups for a batch of users.
+// Use NewNicknameCache to create and populate the cache.
+type NicknameCache struct {
+	byUserID   map[int64]string
+	byUsername map[string]string
+}
+
+// Get returns the nickname for a user, checking user ID first, then username.
+func (c *NicknameCache) Get(userID int64, username string) string {
+	if userID > 0 {
+		if nick, ok := c.byUserID[userID]; ok {
+			return nick
+		}
+	}
+	if username != "" {
+		if nick, ok := c.byUsername[username]; ok {
+			return nick
+		}
+	}
+	return ""
+}
+
+// NewNicknameCache creates a cache pre-populated with nicknames for the given keys.
+func (s *Service) NewNicknameCache(keys []NicknameLookupKey) (*NicknameCache, error) {
+	byUserID, byUsername, err := s.nicknames.GetDisplayNicksBatch(keys)
+	if err != nil {
+		return nil, err
+	}
+	return &NicknameCache{
+		byUserID:   byUserID,
+		byUsername: byUsername,
+	}, nil
+}
+
+// NewNicknameCacheFromVotes creates a cache for the users in the given votes.
+func (s *Service) NewNicknameCacheFromVotes(votes []*Vote) (*NicknameCache, error) {
+	keys := make([]NicknameLookupKey, len(votes))
+	for i, v := range votes {
+		keys[i] = NicknameLookupKey{
+			UserID:   v.TgUserID,
+			Username: v.TgUsername,
+		}
+	}
+	return s.NewNicknameCache(keys)
 }
 
 // LookupUserIDByUsername finds a user ID from vote history by username.

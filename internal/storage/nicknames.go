@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"nuclight.org/consigliere/internal/poll"
 )
 
 type NicknameRepository struct {
@@ -177,4 +179,112 @@ func (r *NicknameRepository) GetAllGameNicksForUser(userID int64, username strin
 		nicks = append(nicks, nick)
 	}
 	return nicks, rows.Err()
+}
+
+// GetDisplayNicksBatch returns game nicknames for multiple users in a single query.
+// Returns a map from user ID or username to game nickname.
+// For users with both ID and username, the result is keyed by user ID.
+func (r *NicknameRepository) GetDisplayNicksBatch(keys []poll.NicknameLookupKey) (map[int64]string, map[string]string, error) {
+	if len(keys) == 0 {
+		return make(map[int64]string), make(map[string]string), nil
+	}
+
+	// Collect unique user IDs and usernames
+	userIDs := make([]int64, 0)
+	usernames := make([]string, 0)
+	seenIDs := make(map[int64]bool)
+	seenUsernames := make(map[string]bool)
+
+	for _, k := range keys {
+		if k.UserID > 0 && !seenIDs[k.UserID] {
+			userIDs = append(userIDs, k.UserID)
+			seenIDs[k.UserID] = true
+		}
+		if k.Username != "" && !seenUsernames[k.Username] {
+			usernames = append(usernames, k.Username)
+			seenUsernames[k.Username] = true
+		}
+	}
+
+	byUserID := make(map[int64]string)
+	byUsername := make(map[string]string)
+
+	// Query by user IDs if any
+	if len(userIDs) > 0 {
+		// Build placeholders
+		placeholders := make([]string, len(userIDs))
+		args := make([]any, len(userIDs))
+		for i, id := range userIDs {
+			placeholders[i] = "?"
+			args[i] = id
+		}
+
+		query := fmt.Sprintf(`
+			SELECT tg_user_id, game_nick
+			FROM nicknames
+			WHERE tg_user_id IN (%s)
+			ORDER BY created_at DESC
+		`, strings.Join(placeholders, ","))
+
+		rows, err := r.db.db.Query(query, args...)
+		if err != nil {
+			return nil, nil, fmt.Errorf("query nicknames by user ids: %w", err)
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var userID int64
+			var nick string
+			if err := rows.Scan(&userID, &nick); err != nil {
+				return nil, nil, fmt.Errorf("scan nickname by user id: %w", err)
+			}
+			// Only store first (most recent) nick per user
+			if _, exists := byUserID[userID]; !exists {
+				byUserID[userID] = nick
+			}
+		}
+		if err := rows.Err(); err != nil {
+			return nil, nil, err
+		}
+	}
+
+	// Query by usernames if any
+	if len(usernames) > 0 {
+		placeholders := make([]string, len(usernames))
+		args := make([]any, len(usernames))
+		for i, u := range usernames {
+			placeholders[i] = "?"
+			args[i] = u
+		}
+
+		query := fmt.Sprintf(`
+			SELECT tg_username, game_nick
+			FROM nicknames
+			WHERE tg_username IN (%s)
+			ORDER BY created_at DESC
+		`, strings.Join(placeholders, ","))
+
+		rows, err := r.db.db.Query(query, args...)
+		if err != nil {
+			return nil, nil, fmt.Errorf("query nicknames by usernames: %w", err)
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var username string
+			var nick string
+			if err := rows.Scan(&username, &nick); err != nil {
+				return nil, nil, fmt.Errorf("scan nickname by username: %w", err)
+			}
+			// Only store first (most recent) nick per username
+			if _, exists := byUsername[username]; !exists {
+				byUsername[username] = nick
+			}
+		}
+		if err := rows.Err(); err != nil {
+			return nil, nil, err
+		}
+	}
+
+	return byUserID, byUsername, nil
 }
