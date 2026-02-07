@@ -23,13 +23,44 @@ type NicknameLookupKey struct {
 	Username string
 }
 
+// NicknameInfo contains nickname and gender for display.
+type NicknameInfo struct {
+	Nick   string
+	Gender string // "male", "female", or "" for not set
+}
+
+// DisplayNick returns the nickname with gender prefix applied.
+// Returns empty string if Nick is empty.
+func (n NicknameInfo) DisplayNick() string {
+	if n.Nick == "" {
+		return ""
+	}
+	prefix := n.GenderPrefix()
+	if prefix == "" {
+		return n.Nick
+	}
+	return prefix + " " + n.Nick
+}
+
+// GenderPrefix returns the display prefix for the gender.
+func (n NicknameInfo) GenderPrefix() string {
+	switch n.Gender {
+	case "male":
+		return "г-н"
+	case "female":
+		return "г-ж"
+	default:
+		return ""
+	}
+}
+
 type NicknameRepository interface {
-	Create(tgUserID *int64, tgUsername *string, gameNick string) (bool, error)
+	Create(tgUserID *int64, tgUsername *string, gameNick string, gender string) (bool, error)
 	FindByGameNick(gameNick string) (tgUserID *int64, tgUsername *string, err error)
 	FindByTgUsername(username string) (gameNick string, tgUserID *int64, err error)
 	FindByTgUserID(userID int64) (gameNick string, err error)
 	GetDisplayNick(userID int64, username string) (string, error)
-	GetDisplayNicksBatch(keys []NicknameLookupKey) (byUserID map[int64]string, byUsername map[string]string, err error)
+	GetDisplayNicksBatch(keys []NicknameLookupKey) (byUserID map[int64]NicknameInfo, byUsername map[string]NicknameInfo, err error)
 	UpdateUserIDByUsername(username string, userID int64) error
 	GetAllGameNicksForUser(userID int64, username string) ([]string, error)
 }
@@ -189,8 +220,9 @@ func (s *Service) RecordVote(v *Vote) error {
 
 // CreateNickname creates a new nickname mapping.
 // If tgUsername is provided, attempts to look up the user ID from voting history.
+// Gender should be "male", "female", or empty string for not set.
 // Returns true if created, false if duplicate.
-func (s *Service) CreateNickname(tgUserID *int64, tgUsername *string, gameNick string) (bool, error) {
+func (s *Service) CreateNickname(tgUserID *int64, tgUsername *string, gameNick string, gender string) (bool, error) {
 	// If username provided but no user ID, try to look up from votes
 	if tgUserID == nil && tgUsername != nil {
 		if userID, found, err := s.votes.LookupUserIDByUsername(*tgUsername); err != nil {
@@ -200,7 +232,7 @@ func (s *Service) CreateNickname(tgUserID *int64, tgUsername *string, gameNick s
 		}
 	}
 
-	return s.nicknames.Create(tgUserID, tgUsername, gameNick)
+	return s.nicknames.Create(tgUserID, tgUsername, gameNick, gender)
 }
 
 // ResolveVoteIdentifier resolves a vote identifier to user information.
@@ -308,24 +340,40 @@ func (s *Service) GetAllGameNicksForUser(userID int64, username string) ([]strin
 // NicknameCache provides cached nickname lookups for a batch of users.
 // Use NewNicknameCache to create and populate the cache.
 type NicknameCache struct {
-	byUserID   map[int64]string
-	byUsername map[string]string
+	byUserID   map[int64]NicknameInfo
+	byUsername map[string]NicknameInfo
 }
 
 // Get returns the nickname for a user, checking user ID first, then username.
 // Username is normalized to lowercase for lookup.
+// Returns empty string if no nickname found.
 func (c *NicknameCache) Get(userID int64, username string) string {
+	info := c.GetInfo(userID, username)
+	return info.Nick
+}
+
+// GetInfo returns the NicknameInfo for a user, checking user ID first, then username.
+// Username is normalized to lowercase for lookup.
+// Returns empty NicknameInfo if not found.
+func (c *NicknameCache) GetInfo(userID int64, username string) NicknameInfo {
 	if userID > 0 {
-		if nick, ok := c.byUserID[userID]; ok {
-			return nick
+		if info, ok := c.byUserID[userID]; ok {
+			return info
 		}
 	}
 	if username != "" {
-		if nick, ok := c.byUsername[NormalizeUsername(username)]; ok {
-			return nick
+		if info, ok := c.byUsername[NormalizeUsername(username)]; ok {
+			return info
 		}
 	}
-	return ""
+	return NicknameInfo{}
+}
+
+// GetDisplayNick returns the nickname with gender prefix for a user.
+// Returns empty string if no nickname found.
+func (c *NicknameCache) GetDisplayNick(userID int64, username string) string {
+	info := c.GetInfo(userID, username)
+	return info.DisplayNick()
 }
 
 // NewNicknameCache creates a cache pre-populated with nicknames for the given keys.

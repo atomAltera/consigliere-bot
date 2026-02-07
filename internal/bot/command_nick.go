@@ -3,7 +3,6 @@ package bot
 import (
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 
 	tele "gopkg.in/telebot.v4"
@@ -15,30 +14,23 @@ import (
 // Usage:
 //
 //	/nick @username gamenick — link by telegram username
+//	/nick @username "nick with spaces" — quoted nickname
+//	/nick @username gamenick м — with gender (м/ж/m/f/д)
 //	/nick 123456 gamenick   — link by telegram user ID
 func (b *Bot) handleNick(c tele.Context) error {
-	args := c.Args()
-	if len(args) < 2 {
+	// Join all args back together to parse with our custom parser
+	// that handles quotes properly
+	input := strings.Join(c.Args(), " ")
+	if input == "" {
 		return UserErrorf(MsgNickUsage)
 	}
 
-	identifier := args[0]
-	gameNick := args[1]
-
-	var tgUserID *int64
-	var tgUsername *string
-
-	if strings.HasPrefix(identifier, "@") {
-		// Telegram username
-		username := strings.TrimPrefix(identifier, "@")
-		if username == "" {
-			return UserErrorf(MsgInvalidUsername)
+	args, err := ParseNickArgs(input)
+	if err != nil {
+		// Check for specific error types
+		if strings.Contains(err.Error(), "invalid gender") {
+			return UserErrorf(MsgInvalidGender)
 		}
-		tgUsername = &username
-	} else if id, err := strconv.ParseInt(identifier, 10, 64); err == nil && id > 0 {
-		// Numeric user ID
-		tgUserID = &id
-	} else {
 		return UserErrorf(MsgNickUsage)
 	}
 
@@ -46,24 +38,25 @@ func (b *Bot) handleNick(c tele.Context) error {
 		"user_id", c.Sender().ID,
 		"username", c.Sender().Username,
 		"chat_id", c.Chat().ID,
-		"tg_user_id", tgUserID,
-		"tg_username", tgUsername,
-		"game_nick", gameNick,
+		"tg_user_id", args.TgUserID,
+		"tg_username", args.TgUsername,
+		"game_nick", args.Nickname,
+		"gender", args.Gender.String(),
 	)
 
 	// Create the nickname mapping
-	created, err := b.pollService.CreateNickname(tgUserID, tgUsername, gameNick)
+	created, err := b.pollService.CreateNickname(args.TgUserID, args.TgUsername, args.Nickname, args.Gender.String())
 	if err != nil {
 		return WrapUserError(MsgFailedSaveNick, err)
 	}
 
 	// Get the resolved user ID for backfill
 	var resolvedUserID int64
-	if tgUserID != nil {
-		resolvedUserID = *tgUserID
-	} else if tgUsername != nil {
+	if args.TgUserID != nil {
+		resolvedUserID = *args.TgUserID
+	} else if args.TgUsername != nil {
 		// Try to infer user ID from vote history
-		if id, found, err := b.pollService.LookupUserIDByUsername(*tgUsername); err == nil && found {
+		if id, found, err := b.pollService.LookupUserIDByUsername(*args.TgUsername); err == nil && found {
 			resolvedUserID = id
 		}
 	}
@@ -71,8 +64,8 @@ func (b *Bot) handleNick(c tele.Context) error {
 	// Backfill votes if we have a user ID
 	if resolvedUserID > 0 {
 		var username string
-		if tgUsername != nil {
-			username = *tgUsername
+		if args.TgUsername != nil {
+			username = *args.TgUsername
 		}
 		gameNicks, err := b.pollService.GetAllGameNicksForUser(resolvedUserID, username)
 		if err != nil {
@@ -92,10 +85,10 @@ func (b *Bot) handleNick(c tele.Context) error {
 	// Send confirmation
 	var msg string
 	if created {
-		if tgUsername != nil {
-			msg = fmt.Sprintf(MsgFmtNickCreated, "@"+*tgUsername, gameNick)
+		if args.TgUsername != nil {
+			msg = fmt.Sprintf(MsgFmtNickCreated, "@"+*args.TgUsername, args.Nickname)
 		} else {
-			msg = fmt.Sprintf(MsgFmtNickCreatedByID, *tgUserID, gameNick)
+			msg = fmt.Sprintf(MsgFmtNickCreatedByID, *args.TgUserID, args.Nickname)
 		}
 	} else {
 		msg = MsgNickDuplicate
@@ -165,7 +158,7 @@ func (b *Bot) membersFromVotesWithNicknames(votes []*poll.Vote) []Member {
 			TgID:       v.TgUserID,
 			TgName:     v.TgFirstName,
 			TgUsername: v.TgUsername,
-			Nickname:   cache.Get(v.TgUserID, v.TgUsername),
+			Nickname:   cache.GetDisplayNick(v.TgUserID, v.TgUsername),
 		}
 		members = append(members, m)
 	}
@@ -189,7 +182,8 @@ func (b *Bot) enrichVotesWithNicknames(votes []*poll.Vote) {
 	}
 
 	for _, v := range votes {
-		nick := cache.Get(v.TgUserID, v.TgUsername)
+		// GetDisplayNick returns nickname with gender prefix (e.g., "г-н Кринж")
+		nick := cache.GetDisplayNick(v.TgUserID, v.TgUsername)
 		if nick != "" {
 			// Store nickname in TgFirstName for display (Vote.DisplayName() will use it)
 			v.TgFirstName = nick

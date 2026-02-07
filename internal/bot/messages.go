@@ -13,8 +13,9 @@ const (
 	MsgInvalidVoteOption  = "Неверная опция. Используйте 1-5:\n1=19:00, 2=20:00, 3=21:00+, 4=решу позже, 5=не приду"
 	MsgNoUndecidedVoters  = "Нет участников, которые ещё не определились"
 	MsgNotEnoughPlayers   = "Недостаточно игроков. Нужно минимум 11 человек на 19:00 и 20:00"
-	MsgNickUsage     = "Использование: /nick @username игровой_ник или /nick 123456 игровой_ник"
+	MsgNickUsage     = "Использование: /nick @username игровой_ник [пол]\nНик в кавычках если с пробелами: /nick @user \"Мадам Жу\"\nПол (опционально): м/ж/m/f/д"
 	MsgNickDuplicate = "Такая связка уже существует"
+	MsgInvalidGender = "Неверный пол. Используйте: м/ж/m/f/д"
 )
 
 // System error messages (internal errors, hide details from user)

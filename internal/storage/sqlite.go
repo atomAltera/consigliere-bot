@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	_ "modernc.org/sqlite"
 )
@@ -76,6 +77,7 @@ func (d *DB) Migrate() error {
 		tg_user_id INTEGER,
 		tg_username TEXT,
 		game_nick TEXT NOT NULL,
+		gender TEXT,
 		created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 	);
 
@@ -84,9 +86,24 @@ func (d *DB) Migrate() error {
 	CREATE UNIQUE INDEX IF NOT EXISTS idx_nicknames_game_nick_unique ON nicknames(game_nick);
 	`
 
+	// Run migrations for schema updates
+	migrations := []string{
+		// Add gender column to nicknames if it doesn't exist
+		`ALTER TABLE nicknames ADD COLUMN gender TEXT`,
+	}
+
 	_, err := d.db.Exec(schema)
 	if err != nil {
 		return fmt.Errorf("execute schema: %w", err)
+	}
+
+	// Run migrations - ignore errors for already-applied migrations
+	for _, migration := range migrations {
+		_, err := d.db.Exec(migration)
+		// Ignore "duplicate column" errors - migration already applied
+		if err != nil && !strings.Contains(err.Error(), "duplicate column") {
+			return fmt.Errorf("execute migration: %w", err)
+		}
 	}
 
 	return nil

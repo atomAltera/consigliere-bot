@@ -85,7 +85,7 @@ func (m *mockVoteRepo) UpdateVotesUserID(pollID int64, oldUserID, newUserID int6
 
 type mockNicknameRepo struct{}
 
-func (m *mockNicknameRepo) Create(tgUserID *int64, tgUsername *string, gameNick string) (bool, error) {
+func (m *mockNicknameRepo) Create(tgUserID *int64, tgUsername *string, gameNick string, gender string) (bool, error) {
 	return true, nil
 }
 
@@ -113,8 +113,8 @@ func (m *mockNicknameRepo) GetAllGameNicksForUser(userID int64, username string)
 	return nil, nil
 }
 
-func (m *mockNicknameRepo) GetDisplayNicksBatch(keys []NicknameLookupKey) (map[int64]string, map[string]string, error) {
-	return make(map[int64]string), make(map[string]string), nil
+func (m *mockNicknameRepo) GetDisplayNicksBatch(keys []NicknameLookupKey) (map[int64]NicknameInfo, map[string]NicknameInfo, error) {
+	return make(map[int64]NicknameInfo), make(map[string]NicknameInfo), nil
 }
 
 func TestService_CreatePoll(t *testing.T) {

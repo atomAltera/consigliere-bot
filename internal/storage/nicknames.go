@@ -25,12 +25,19 @@ func isUniqueConstraintError(err error) bool {
 // Create inserts a new nickname record if game_nick is not already taken.
 // Returns true if inserted, false if game_nick is already used by another player.
 // Username is normalized to lowercase before storing.
-func (r *NicknameRepository) Create(tgUserID *int64, tgUsername *string, gameNick string) (bool, error) {
+// Gender should be "male", "female", or empty string for not set.
+func (r *NicknameRepository) Create(tgUserID *int64, tgUsername *string, gameNick string, gender string) (bool, error) {
 	// Normalize username for storage
 	var normalizedUsername *string
 	if tgUsername != nil {
 		normalized := poll.NormalizeUsername(*tgUsername)
 		normalizedUsername = &normalized
+	}
+
+	// Normalize gender for storage
+	var genderVal *string
+	if gender != "" {
+		genderVal = &gender
 	}
 
 	// Check if game_nick is already taken (globally unique)
@@ -46,9 +53,9 @@ func (r *NicknameRepository) Create(tgUserID *int64, tgUsername *string, gameNic
 	}
 
 	_, err = r.db.db.Exec(`
-		INSERT INTO nicknames (tg_user_id, tg_username, game_nick, created_at)
-		VALUES (?, ?, ?, ?)
-	`, tgUserID, normalizedUsername, gameNick, time.Now())
+		INSERT INTO nicknames (tg_user_id, tg_username, game_nick, gender, created_at)
+		VALUES (?, ?, ?, ?, ?)
+	`, tgUserID, normalizedUsername, gameNick, genderVal, time.Now())
 	if err != nil {
 		// Handle unique constraint violation (race condition)
 		if isUniqueConstraintError(err) {
@@ -194,12 +201,12 @@ func (r *NicknameRepository) GetAllGameNicksForUser(userID int64, username strin
 }
 
 // GetDisplayNicksBatch returns game nicknames for multiple users in a single query.
-// Returns a map from user ID or username to game nickname.
+// Returns a map from user ID or username to NicknameInfo (nick + gender).
 // For users with both ID and username, the result is keyed by user ID.
 // Usernames are normalized to lowercase for lookup and in the returned map.
-func (r *NicknameRepository) GetDisplayNicksBatch(keys []poll.NicknameLookupKey) (map[int64]string, map[string]string, error) {
+func (r *NicknameRepository) GetDisplayNicksBatch(keys []poll.NicknameLookupKey) (map[int64]poll.NicknameInfo, map[string]poll.NicknameInfo, error) {
 	if len(keys) == 0 {
-		return make(map[int64]string), make(map[string]string), nil
+		return make(map[int64]poll.NicknameInfo), make(map[string]poll.NicknameInfo), nil
 	}
 
 	// Collect unique user IDs and usernames (normalized)
@@ -222,8 +229,8 @@ func (r *NicknameRepository) GetDisplayNicksBatch(keys []poll.NicknameLookupKey)
 		}
 	}
 
-	byUserID := make(map[int64]string)
-	byUsername := make(map[string]string)
+	byUserID := make(map[int64]poll.NicknameInfo)
+	byUsername := make(map[string]poll.NicknameInfo)
 
 	// Query by user IDs if any
 	if len(userIDs) > 0 {
@@ -236,7 +243,7 @@ func (r *NicknameRepository) GetDisplayNicksBatch(keys []poll.NicknameLookupKey)
 		}
 
 		query := fmt.Sprintf(`
-			SELECT tg_user_id, game_nick
+			SELECT tg_user_id, game_nick, gender
 			FROM nicknames
 			WHERE tg_user_id IN (%s)
 			ORDER BY created_at DESC
@@ -251,12 +258,13 @@ func (r *NicknameRepository) GetDisplayNicksBatch(keys []poll.NicknameLookupKey)
 		for rows.Next() {
 			var userID int64
 			var nick string
-			if err := rows.Scan(&userID, &nick); err != nil {
+			var gender sql.NullString
+			if err := rows.Scan(&userID, &nick, &gender); err != nil {
 				return nil, nil, fmt.Errorf("scan nickname by user id: %w", err)
 			}
 			// Only store first (most recent) nick per user
 			if _, exists := byUserID[userID]; !exists {
-				byUserID[userID] = nick
+				byUserID[userID] = poll.NicknameInfo{Nick: nick, Gender: gender.String}
 			}
 		}
 		if err := rows.Err(); err != nil {
@@ -274,7 +282,7 @@ func (r *NicknameRepository) GetDisplayNicksBatch(keys []poll.NicknameLookupKey)
 		}
 
 		query := fmt.Sprintf(`
-			SELECT tg_username, game_nick
+			SELECT tg_username, game_nick, gender
 			FROM nicknames
 			WHERE tg_username IN (%s)
 			ORDER BY created_at DESC
@@ -289,12 +297,13 @@ func (r *NicknameRepository) GetDisplayNicksBatch(keys []poll.NicknameLookupKey)
 		for rows.Next() {
 			var username string
 			var nick string
-			if err := rows.Scan(&username, &nick); err != nil {
+			var gender sql.NullString
+			if err := rows.Scan(&username, &nick, &gender); err != nil {
 				return nil, nil, fmt.Errorf("scan nickname by username: %w", err)
 			}
 			// Only store first (most recent) nick per username
 			if _, exists := byUsername[username]; !exists {
-				byUsername[username] = nick
+				byUsername[username] = poll.NicknameInfo{Nick: nick, Gender: gender.String}
 			}
 		}
 		if err := rows.Err(); err != nil {
