@@ -96,7 +96,7 @@ func formatMentions(members []Member) string {
 }
 
 // formatCollectedMembers formats members for the /done message.
-// Shows numbered list with @username and nickname on each line.
+// Shows numbered list with game nick first, then @username if available.
 func formatCollectedMembers(members []Member) string {
 	if len(members) == 0 {
 		return ""
@@ -104,13 +104,13 @@ func formatCollectedMembers(members []Member) string {
 	lines := make([]string, 0, len(members))
 	for i, m := range members {
 		var line string
-		if m.TgUsername != "" {
-			line = "@" + m.TgUsername
-			if m.Nickname != "" {
-				line += " " + m.Nickname
-			}
-		} else if m.Nickname != "" {
+		if m.Nickname != "" {
 			line = m.Nickname
+			if m.TgUsername != "" {
+				line += " @" + m.TgUsername
+			}
+		} else if m.TgUsername != "" {
+			line = "@" + m.TgUsername
 		} else if m.TgName != "" {
 			line = m.TgName
 		}
