@@ -91,11 +91,24 @@ func (r *VoteRepository) LookupUserIDByUsername(username string) (int64, bool, e
 }
 
 // UpdateVotesUserID updates votes with oldUserID to use newUserID for a specific poll.
+// Also updates tg_username if provided (non-empty) and the vote has no username.
 // Used for backfilling votes when nickname is set. Only affects the specified poll.
-func (r *VoteRepository) UpdateVotesUserID(pollID int64, oldUserID, newUserID int64) error {
-	_, err := r.db.db.Exec(`
-		UPDATE votes SET tg_user_id = ? WHERE poll_id = ? AND tg_user_id = ?
-	`, newUserID, pollID, oldUserID)
+func (r *VoteRepository) UpdateVotesUserID(pollID int64, oldUserID, newUserID int64, tgUsername string) error {
+	var err error
+	if tgUsername != "" {
+		// Normalize username for consistency with other storage methods
+		normalizedUsername := poll.NormalizeUsername(tgUsername)
+		// Update user ID and set username (only if username is currently empty)
+		_, err = r.db.db.Exec(`
+			UPDATE votes
+			SET tg_user_id = ?, tg_username = COALESCE(NULLIF(tg_username, ''), ?)
+			WHERE poll_id = ? AND tg_user_id = ?
+		`, newUserID, normalizedUsername, pollID, oldUserID)
+	} else {
+		_, err = r.db.db.Exec(`
+			UPDATE votes SET tg_user_id = ? WHERE poll_id = ? AND tg_user_id = ?
+		`, newUserID, pollID, oldUserID)
+	}
 	if err != nil {
 		return fmt.Errorf("update votes user id: %w", err)
 	}

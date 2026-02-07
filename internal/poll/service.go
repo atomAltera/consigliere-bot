@@ -14,7 +14,7 @@ type VoteRepository interface {
 	Record(v *Vote) error
 	GetCurrentVotes(pollID int64) ([]*Vote, error)
 	LookupUserIDByUsername(username string) (int64, bool, error)
-	UpdateVotesUserID(pollID int64, oldUserID, newUserID int64) error
+	UpdateVotesUserID(pollID int64, oldUserID, newUserID int64, tgUsername string) error
 }
 
 // NicknameLookupKey represents a user identifier for batch nickname lookups.
@@ -295,6 +295,7 @@ func (s *Service) ResolveVoteIdentifier(identifier string) (int64, string, strin
 
 // BackfillVotesForNickname updates votes in the active poll to use the canonical user ID.
 // Called after creating a nickname to consolidate votes.
+// Also updates tg_username on synthetic votes so they can be properly displayed with mentions.
 func (s *Service) BackfillVotesForNickname(chatID int64, tgUserID int64, tgUsername string, gameNicks []string) error {
 	// Get active poll
 	p, err := s.polls.GetLatestActive(chatID)
@@ -304,17 +305,19 @@ func (s *Service) BackfillVotesForNickname(chatID int64, tgUserID int64, tgUsern
 
 	// Update votes by username (only for this poll)
 	if tgUsername != "" {
-		// Find synthetic ID for username and update
+		// Find synthetic ID for username and update (pass empty username since this vote
+		// was created by username, so it already has the username set)
 		syntheticID := ManualUserID(tgUsername)
-		if err := s.votes.UpdateVotesUserID(p.ID, syntheticID, tgUserID); err != nil {
+		if err := s.votes.UpdateVotesUserID(p.ID, syntheticID, tgUserID, ""); err != nil {
 			return err
 		}
 	}
 
 	// Update votes by game nicks (only for this poll)
+	// These synthetic votes were created by game nick and need the username set
 	for _, nick := range gameNicks {
 		syntheticID := ManualUserID(nick)
-		if err := s.votes.UpdateVotesUserID(p.ID, syntheticID, tgUserID); err != nil {
+		if err := s.votes.UpdateVotesUserID(p.ID, syntheticID, tgUserID, tgUsername); err != nil {
 			return err
 		}
 	}

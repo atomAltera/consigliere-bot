@@ -79,7 +79,7 @@ func (m *mockVoteRepo) LookupUserIDByUsername(username string) (int64, bool, err
 	return 0, false, nil
 }
 
-func (m *mockVoteRepo) UpdateVotesUserID(pollID int64, oldUserID, newUserID int64) error {
+func (m *mockVoteRepo) UpdateVotesUserID(pollID int64, oldUserID, newUserID int64, tgUsername string) error {
 	return nil
 }
 
