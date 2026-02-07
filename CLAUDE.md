@@ -49,6 +49,16 @@ Configuration can also be loaded from a `.env` file in the project root.
 - **Error handling**: Return `UserErrorf()` or `WrapUserError()` from handlers - the `HandleErrors` middleware sends and auto-deletes the message
 - **User vs system errors**: Messages defined in `messages.go` are split into user errors (shown directly) and system errors (hide internal details)
 
+## Code Review
+
+Use `codex review` for non-interactive code review:
+
+```bash
+codex review --uncommitted                    # Review all uncommitted changes
+codex review --commit HEAD                    # Review the last commit
+codex review --base main                      # Review changes against main branch
+```
+
 ## Important
 
 - When adding, changing, or removing bot commands, always update the `/help` template at `internal/bot/templates/help.html`

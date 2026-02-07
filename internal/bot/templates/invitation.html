@@ -19,7 +19,7 @@
 {{- end}}
 {{- if .Undecided}}
 
-<b>Ещё не решили:</b>
+<b>Ещё не решили ({{len .Undecided}}):</b>
 {{range $i, $v := .Undecided}}{{if $i}}, {{end}}{{$v.DisplayName}}{{end}}
 {{- end}}
 {{- if .IsCancelled}}
