@@ -20,5 +20,6 @@ func (b *Bot) RegisterCommands() {
 	adminGroup.Handle("/nick", b.handleNick)
 	adminGroup.Handle("/call", b.handleCall)
 	adminGroup.Handle("/done", b.handleDone)
+	adminGroup.Handle("/refresh", b.handleRefresh)
 	adminGroup.Handle("/help", b.handleHelp)
 }

@@ -6,6 +6,7 @@ type PollRepository interface {
 	Create(p *Poll) error
 	GetLatestActive(chatID int64) (*Poll, error)
 	GetLatestCancelled(chatID int64) (*Poll, error)
+	GetLatest(chatID int64) (*Poll, error)
 	GetByTgPollID(tgPollID string) (*Poll, error)
 	Update(p *Poll) error
 }
@@ -129,6 +130,19 @@ func (s *Service) CreatePoll(tgChatID int64, eventDate time.Time) (*CreatePollRe
 // Returns ErrNoActivePoll if no active poll exists.
 func (s *Service) GetActivePoll(tgChatID int64) (*Poll, error) {
 	p, err := s.polls.GetLatestActive(tgChatID)
+	if err != nil {
+		return nil, err
+	}
+	if p == nil {
+		return nil, ErrNoActivePoll
+	}
+	return p, nil
+}
+
+// GetLatestPoll returns the latest poll for the given chat, regardless of status.
+// Returns ErrNoActivePoll if no poll exists.
+func (s *Service) GetLatestPoll(tgChatID int64) (*Poll, error) {
+	p, err := s.polls.GetLatest(tgChatID)
 	if err != nil {
 		return nil, err
 	}

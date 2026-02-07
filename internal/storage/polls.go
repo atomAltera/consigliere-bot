@@ -95,6 +95,18 @@ func (r *PollRepository) GetLatestCancelled(chatID int64) (*poll.Poll, error) {
 	return r.scanPoll(row)
 }
 
+func (r *PollRepository) GetLatest(chatID int64) (*poll.Poll, error) {
+	row := r.db.db.QueryRow(`
+		SELECT id, tg_chat_id, tg_poll_id, tg_message_id, tg_invitation_message_id, tg_cancel_message_id, tg_done_message_id, event_date, options, is_active, is_pinned, created_at
+		FROM polls
+		WHERE tg_chat_id = ?
+		ORDER BY created_at DESC
+		LIMIT 1
+	`, chatID)
+
+	return r.scanPoll(row)
+}
+
 func (r *PollRepository) Update(p *poll.Poll) error {
 	_, err := r.db.db.Exec(`
 		UPDATE polls

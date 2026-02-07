@@ -5,6 +5,7 @@ const (
 	MsgInvalidDateFormat  = "Неверный формат даты. Используйте название дня (например, понедельник, сб) или ГГГГ-ММ-ДД"
 	MsgPollAlreadyExists  = "В этом чате уже есть активный опрос. Сначала отмените его командой /cancel"
 	MsgNoActivePoll       = "Активный опрос не найден"
+	MsgNoPoll             = "Опрос не найден"
 	MsgNoCancelledPoll    = "Нет отменённых опросов"
 	MsgPollDatePassed     = "Нельзя восстановить опрос для прошедшей даты"
 	MsgPollMessageMissing = "Сообщение с опросом не найдено"
@@ -46,6 +47,7 @@ const (
 	MsgFailedRenderCollected    = "Не удалось сформировать сообщение о наборе"
 	MsgFailedSendCollected      = "Не удалось отправить сообщение о наборе"
 	MsgFailedSaveNick           = "Не удалось сохранить ник"
+	MsgFailedRefresh            = "Не удалось обновить сообщения"
 )
 
 // Format strings for dynamic messages
