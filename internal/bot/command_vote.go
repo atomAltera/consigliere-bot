@@ -82,6 +82,13 @@ func (b *Bot) handleVote(c tele.Context) error {
 		return WrapUserError(MsgFailedRecordVote, err)
 	}
 
+	// Ensure data consistency if we have a real user ID
+	if userID > 0 {
+		if err := b.pollService.EnsureUserDataConsistency(c.Chat().ID, userID, username); err != nil {
+			b.logger.Warn("failed to ensure user data consistency", "error", err)
+		}
+	}
+
 	// Update invitation message if exists
 	if p.TgInvitationMessageID != 0 {
 		results, err := b.pollService.GetInvitationData(p.ID)

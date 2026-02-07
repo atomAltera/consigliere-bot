@@ -59,11 +59,9 @@ func (b *Bot) handlePollAnswer(c tele.Context) error {
 		return fmt.Errorf("record vote: %w", err)
 	}
 
-	// Backfill nickname user ID if user has a username
-	if answer.Sender.Username != "" {
-		if err := b.pollService.BackfillNicknameUserID(answer.Sender.Username, answer.Sender.ID); err != nil {
-			b.logger.Warn("failed to backfill nickname user id", "error", err)
-		}
+	// Ensure data consistency: update nicknames and consolidate synthetic votes
+	if err := b.pollService.EnsureUserDataConsistency(p.TgChatID, answer.Sender.ID, answer.Sender.Username); err != nil {
+		b.logger.Warn("failed to ensure user data consistency", "error", err)
 	}
 
 	// Update invitation message if exists

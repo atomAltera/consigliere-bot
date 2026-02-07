@@ -91,7 +91,15 @@ func (m *mockVoteRepo) LookupUserIDByUsername(username string) (int64, bool, err
 	return 0, false, nil
 }
 
+func (m *mockVoteRepo) LookupUsernameByUserID(userID int64) (string, bool, error) {
+	return "", false, nil
+}
+
 func (m *mockVoteRepo) UpdateVotesUserID(pollID int64, oldUserID, newUserID int64, tgUsername string) error {
+	return nil
+}
+
+func (m *mockVoteRepo) ConsolidateSyntheticVotes(pollID int64, realUserID int64, username string, gameNicks []string) error {
 	return nil
 }
 
@@ -118,6 +126,10 @@ func (m *mockNicknameRepo) GetDisplayNick(userID int64, username string) (string
 }
 
 func (m *mockNicknameRepo) UpdateUserIDByUsername(username string, userID int64) error {
+	return nil
+}
+
+func (m *mockNicknameRepo) UpdateUserData(userID int64, username string) error {
 	return nil
 }
 

@@ -15,7 +15,9 @@ type VoteRepository interface {
 	Record(v *Vote) error
 	GetCurrentVotes(pollID int64) ([]*Vote, error)
 	LookupUserIDByUsername(username string) (int64, bool, error)
+	LookupUsernameByUserID(userID int64) (string, bool, error)
 	UpdateVotesUserID(pollID int64, oldUserID, newUserID int64, tgUsername string) error
+	ConsolidateSyntheticVotes(pollID int64, realUserID int64, username string, gameNicks []string) error
 }
 
 // NicknameLookupKey represents a user identifier for batch nickname lookups.
@@ -63,6 +65,7 @@ type NicknameRepository interface {
 	GetDisplayNick(userID int64, username string) (string, error)
 	GetDisplayNicksBatch(keys []NicknameLookupKey) (byUserID map[int64]NicknameInfo, byUsername map[string]NicknameInfo, err error)
 	UpdateUserIDByUsername(username string, userID int64) error
+	UpdateUserData(userID int64, username string) error
 	GetAllGameNicksForUser(userID int64, username string) ([]string, error)
 }
 
@@ -342,6 +345,47 @@ func (s *Service) BackfillVotesForNickname(chatID int64, tgUserID int64, tgUsern
 // BackfillNicknameUserID updates nickname records when we learn a user's ID from their vote.
 func (s *Service) BackfillNicknameUserID(username string, userID int64) error {
 	return s.nicknames.UpdateUserIDByUsername(username, userID)
+}
+
+// EnsureUserDataConsistency updates both nicknames and votes tables with user data.
+// Called whenever we learn new information about a user (from voting, nick setting, etc.).
+// This ensures that:
+// 1. Nickname records have both user_id and username when we know them
+// 2. Synthetic votes (from /vote command) are consolidated to use real user ID
+// 3. Votes have username filled in when we learn it
+func (s *Service) EnsureUserDataConsistency(chatID int64, userID int64, username string) error {
+	if userID <= 0 {
+		return nil // No real user ID, nothing to consolidate
+	}
+
+	// Try to enrich username from votes if we don't have it
+	if username == "" {
+		if u, found, err := s.votes.LookupUsernameByUserID(userID); err != nil {
+			return err
+		} else if found {
+			username = u
+		}
+	}
+
+	// Update nickname records with both user_id and username
+	if err := s.nicknames.UpdateUserData(userID, username); err != nil {
+		return err
+	}
+
+	// Get all game nicks for this user to consolidate synthetic votes
+	gameNicks, err := s.nicknames.GetAllGameNicksForUser(userID, username)
+	if err != nil {
+		return err
+	}
+
+	// Get active poll to consolidate synthetic votes
+	p, err := s.polls.GetLatestActive(chatID)
+	if err != nil || p == nil {
+		return err // No active poll, nothing more to do
+	}
+
+	// Consolidate synthetic votes to use real user ID
+	return s.votes.ConsolidateSyntheticVotes(p.ID, userID, username, gameNicks)
 }
 
 // GetDisplayNick returns the game nickname for a user, if one exists.

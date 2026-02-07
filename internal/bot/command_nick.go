@@ -50,8 +50,9 @@ func (b *Bot) handleNick(c tele.Context) error {
 		return WrapUserError(MsgFailedSaveNick, err)
 	}
 
-	// Get the resolved user ID for backfill
+	// Resolve user ID for data consistency
 	var resolvedUserID int64
+	var username string
 	if args.TgUserID != nil {
 		resolvedUserID = *args.TgUserID
 	} else if args.TgUsername != nil {
@@ -60,20 +61,14 @@ func (b *Bot) handleNick(c tele.Context) error {
 			resolvedUserID = id
 		}
 	}
+	if args.TgUsername != nil {
+		username = *args.TgUsername
+	}
 
-	// Backfill votes if we have a user ID
+	// Ensure data consistency: update nicknames and consolidate synthetic votes
 	if resolvedUserID > 0 {
-		var username string
-		if args.TgUsername != nil {
-			username = *args.TgUsername
-		}
-		gameNicks, err := b.pollService.GetAllGameNicksForUser(resolvedUserID, username)
-		if err != nil {
-			b.logger.Warn("failed to get game nicks for backfill", "error", err)
-		} else {
-			if err := b.pollService.BackfillVotesForNickname(c.Chat().ID, resolvedUserID, username, gameNicks); err != nil {
-				b.logger.Warn("failed to backfill votes", "error", err)
-			}
+		if err := b.pollService.EnsureUserDataConsistency(c.Chat().ID, resolvedUserID, username); err != nil {
+			b.logger.Warn("failed to ensure user data consistency", "error", err)
 		}
 	}
 

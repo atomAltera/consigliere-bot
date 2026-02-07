@@ -90,6 +90,60 @@ func (r *VoteRepository) LookupUserIDByUsername(username string) (int64, bool, e
 	return userID, true, nil
 }
 
+// LookupUsernameByUserID returns the username for a user ID from voting history.
+// Returns the most recent username associated with the user ID.
+func (r *VoteRepository) LookupUsernameByUserID(userID int64) (string, bool, error) {
+	var username string
+	err := r.db.db.QueryRow(`
+		SELECT tg_username FROM votes
+		WHERE tg_user_id = ? AND tg_username != ''
+		ORDER BY voted_at DESC
+		LIMIT 1
+	`, userID).Scan(&username)
+	if err == sql.ErrNoRows {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, fmt.Errorf("lookup username by user id: %w", err)
+	}
+	return username, true, nil
+}
+
+// ConsolidateSyntheticVotes updates synthetic votes to use real user data.
+// For a given poll, finds votes with synthetic IDs (derived from username or game nicks)
+// and updates them to use the real user ID and username.
+func (r *VoteRepository) ConsolidateSyntheticVotes(pollID int64, realUserID int64, username string, gameNicks []string) error {
+	normalizedUsername := poll.NormalizeUsername(username)
+
+	// Update synthetic votes by username
+	if normalizedUsername != "" {
+		syntheticID := poll.ManualUserID(normalizedUsername)
+		_, err := r.db.db.Exec(`
+			UPDATE votes
+			SET tg_user_id = ?
+			WHERE poll_id = ? AND tg_user_id = ?
+		`, realUserID, pollID, syntheticID)
+		if err != nil {
+			return fmt.Errorf("consolidate votes by username: %w", err)
+		}
+	}
+
+	// Update synthetic votes by game nicks
+	for _, nick := range gameNicks {
+		syntheticID := poll.ManualUserID(nick)
+		_, err := r.db.db.Exec(`
+			UPDATE votes
+			SET tg_user_id = ?, tg_username = COALESCE(NULLIF(tg_username, ''), ?)
+			WHERE poll_id = ? AND tg_user_id = ?
+		`, realUserID, normalizedUsername, pollID, syntheticID)
+		if err != nil {
+			return fmt.Errorf("consolidate votes by game nick %q: %w", nick, err)
+		}
+	}
+
+	return nil
+}
+
 // UpdateVotesUserID updates votes with oldUserID to use newUserID for a specific poll.
 // Also updates tg_username if provided (non-empty) and the vote has no username.
 // Used for backfilling votes when nickname is set. Only affects the specified poll.

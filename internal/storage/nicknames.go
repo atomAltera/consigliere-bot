@@ -177,6 +177,44 @@ func (r *NicknameRepository) UpdateUserIDByUsername(username string, userID int6
 	return nil
 }
 
+// UpdateUserData updates nickname records with user data when we learn new information.
+// Updates tg_user_id where tg_username matches (and user_id is missing),
+// and updates tg_username where tg_user_id matches (and username is missing).
+// This ensures data consistency when we learn user info from voting or other sources.
+func (r *NicknameRepository) UpdateUserData(userID int64, username string) error {
+	if userID <= 0 && username == "" {
+		return nil // Nothing to update
+	}
+
+	normalizedUsername := poll.NormalizeUsername(username)
+
+	// Update user ID where username matches (and user_id is missing)
+	if userID > 0 && normalizedUsername != "" {
+		_, err := r.db.db.Exec(`
+			UPDATE nicknames
+			SET tg_user_id = ?
+			WHERE tg_username = ? AND tg_user_id IS NULL
+		`, userID, normalizedUsername)
+		if err != nil {
+			return fmt.Errorf("update user id by username: %w", err)
+		}
+	}
+
+	// Update username where user_id matches (and username is missing)
+	if userID > 0 && normalizedUsername != "" {
+		_, err := r.db.db.Exec(`
+			UPDATE nicknames
+			SET tg_username = ?
+			WHERE tg_user_id = ? AND (tg_username IS NULL OR tg_username = '')
+		`, normalizedUsername, userID)
+		if err != nil {
+			return fmt.Errorf("update username by user id: %w", err)
+		}
+	}
+
+	return nil
+}
+
 // GetAllGameNicksForUser returns all game nicks associated with a user (by ID or username).
 // Username is normalized to lowercase for lookup.
 func (r *NicknameRepository) GetAllGameNicksForUser(userID int64, username string) ([]string, error) {
