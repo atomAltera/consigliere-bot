@@ -42,18 +42,23 @@ func (b *Bot) handleDone(c tele.Context) error {
 	count20 := len(data.Votes20)
 	totalEarly := count19 + count20
 
-	// Determine start time and which voters to mention
+	// Determine start time, which voters to mention, and who comes later
 	var startTime string
 	var votesToMention []*poll.Vote
+	var comingLater []*poll.Vote
 
 	if count19 >= minPlayersRequired {
-		// Enough players at 19:00
+		// Enough players at 19:00 - start at 19:00
+		// 20:00 and 21:00+ players are coming later
 		startTime = "19:00"
 		votesToMention = data.Votes19
+		comingLater = append(data.Votes20, data.Votes21...)
 	} else if totalEarly >= minPlayersRequired {
-		// Combined 19:00 + 20:00 is enough, start at 20:00
+		// Combined 19:00 + 20:00 is enough - start at 20:00
+		// Only 21:00+ players are coming later
 		startTime = "20:00"
 		votesToMention = append(data.Votes19, data.Votes20...)
+		comingLater = data.Votes21
 	} else {
 		// Not enough players
 		return UserErrorf(MsgNotEnoughPlayers)
@@ -73,7 +78,7 @@ func (b *Bot) handleDone(c tele.Context) error {
 		EventDate:   p.EventDate,
 		StartTime:   startTime,
 		Members:     b.membersFromVotesWithNicknames(votesToMention),
-		ComingLater: b.membersFromVotesWithNicknames(data.Votes21),
+		ComingLater: b.membersFromVotesWithNicknames(comingLater),
 	})
 	if err != nil {
 		return WrapUserError(MsgFailedRenderCollected, err)
