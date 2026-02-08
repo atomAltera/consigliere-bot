@@ -187,12 +187,9 @@ func (b *Bot) UpdateInvitationMessage(p *poll.Poll, isCancelledOverride *bool) b
 		return false
 	}
 
-	results.Poll = p
-	results.EventDate = p.EventDate
+	p.PopulateInvitationData(results)
 	if isCancelledOverride != nil {
 		results.IsCancelled = *isCancelledOverride
-	} else {
-		results.IsCancelled = !p.IsActive
 	}
 
 	html, err := b.RenderInvitationWithNicks(results)

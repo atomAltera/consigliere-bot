@@ -112,9 +112,7 @@ func (b *Bot) refreshInvitationMessage(chatID int64) error {
 		return err
 	}
 
-	results.Poll = p
-	results.EventDate = p.EventDate
-	results.IsCancelled = !p.IsActive
+	p.PopulateInvitationData(results)
 
 	html, err := b.RenderInvitationWithNicks(results)
 	if err != nil {

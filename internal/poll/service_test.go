@@ -376,6 +376,66 @@ func TestIntegration_GetVotes(t *testing.T) {
 	}
 }
 
+func TestPoll_PopulateInvitationData(t *testing.T) {
+	eventDate := time.Date(2025, 2, 15, 0, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name           string
+		isActive       bool
+		wantCancelled  bool
+	}{
+		{
+			name:          "active poll sets IsCancelled to false",
+			isActive:      true,
+			wantCancelled: false,
+		},
+		{
+			name:          "inactive poll sets IsCancelled to true",
+			isActive:      false,
+			wantCancelled: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &Poll{
+				ID:        1,
+				TgChatID:  -123456,
+				EventDate: eventDate,
+				IsActive:  tt.isActive,
+			}
+
+			data := &InvitationData{
+				Participants: []*Vote{{TgUserID: 1}},
+				ComingLater:  []*Vote{{TgUserID: 2}},
+				Undecided:    []*Vote{{TgUserID: 3}},
+			}
+
+			p.PopulateInvitationData(data)
+
+			if data.Poll != p {
+				t.Error("expected data.Poll to be set to the poll")
+			}
+			if !data.EventDate.Equal(eventDate) {
+				t.Errorf("expected EventDate = %v, got %v", eventDate, data.EventDate)
+			}
+			if data.IsCancelled != tt.wantCancelled {
+				t.Errorf("expected IsCancelled = %v, got %v", tt.wantCancelled, data.IsCancelled)
+			}
+			// Verify existing data is preserved
+			if len(data.Participants) != 1 {
+				t.Error("expected Participants to be preserved")
+			}
+			if len(data.ComingLater) != 1 {
+				t.Error("expected ComingLater to be preserved")
+			}
+			if len(data.Undecided) != 1 {
+				t.Error("expected Undecided to be preserved")
+			}
+		})
+	}
+}
+
 func TestDetermineStartTimeAndVoters(t *testing.T) {
 	// Helper to create N votes
 	makeVotes := func(n int) []*Vote {

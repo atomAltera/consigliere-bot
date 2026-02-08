@@ -25,3 +25,11 @@ type CreatePollResult struct {
 	Poll         *Poll
 	ReplacedPoll *Poll // Non-nil if an old poll with past event date was deactivated
 }
+
+// PopulateInvitationData sets the poll-related fields on InvitationData.
+// This sets Poll, EventDate, and IsCancelled (based on !IsActive).
+func (p *Poll) PopulateInvitationData(data *InvitationData) {
+	data.Poll = p
+	data.EventDate = p.EventDate
+	data.IsCancelled = !p.IsActive
+}
