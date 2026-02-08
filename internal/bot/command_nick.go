@@ -127,73 +127,20 @@ func (b *Bot) refreshInvitationMessage(chatID int64) error {
 	return err
 }
 
-// membersFromVotesWithNicknames creates Members from Votes with nicknames looked up.
-// Preserves both TgUsername and Nickname for display.
-// Uses batch lookup to avoid N+1 queries.
-func (b *Bot) membersFromVotesWithNicknames(votes []*poll.Vote) []Member {
-	members := make([]Member, 0, len(votes))
-
-	// Pre-fetch all nicknames in one batch
-	cache, err := b.pollService.NewNicknameCacheFromVotes(votes)
-	if err != nil {
-		b.logger.Warn("failed to batch fetch nicknames", "error", err)
-		// Fallback: return members without nicknames
-		for _, v := range votes {
-			members = append(members, Member{
-				TgID:       v.TgUserID,
-				TgName:     v.TgFirstName,
-				TgUsername: v.TgUsername,
-			})
-		}
-		return members
-	}
-
-	for _, v := range votes {
-		m := Member{
-			TgID:       v.TgUserID,
-			TgName:     v.TgFirstName,
-			TgUsername: v.TgUsername,
-			Nickname:   cache.GetDisplayNick(v.TgUserID, v.TgUsername),
-		}
-		members = append(members, m)
-	}
-	return members
-}
-
-// enrichVotesWithNicknames looks up game nicknames for votes and sets them.
-// Note: This modifies votes in place and clears username for display purposes.
-// When a game nickname is found, it takes priority for both regular and manual votes.
-// Uses batch lookup to avoid N+1 queries.
-func (b *Bot) enrichVotesWithNicknames(votes []*poll.Vote) {
-	if len(votes) == 0 {
-		return
-	}
-
-	// Pre-fetch all nicknames in one batch
-	cache, err := b.pollService.NewNicknameCacheFromVotes(votes)
-	if err != nil {
-		b.logger.Warn("failed to batch fetch nicknames for enrichment", "error", err)
-		return
-	}
-
-	for _, v := range votes {
-		// GetDisplayNick returns nickname with gender prefix (e.g., "г-н Кринж")
-		nick := cache.GetDisplayNick(v.TgUserID, v.TgUsername)
-		if nick != "" {
-			// Store nickname in TgFirstName for display (Vote.DisplayName() will use it)
-			v.TgFirstName = nick
-			// Clear username so DisplayName() uses TgFirstName (nickname)
-			v.TgUsername = ""
-		}
-	}
-}
 
 // RenderInvitationWithNicks renders invitation with nicknames resolved.
 func (b *Bot) RenderInvitationWithNicks(data *poll.InvitationData) (string, error) {
-	// Enrich votes with nicknames
-	b.enrichVotesWithNicknames(data.Participants)
-	b.enrichVotesWithNicknames(data.ComingLater)
-	b.enrichVotesWithNicknames(data.Undecided)
+	// Build a single cache for all vote lists (more efficient than 3 separate caches)
+	cache, err := b.buildNicknameCacheFromVotes(data.Participants, data.ComingLater, data.Undecided)
+	if err != nil {
+		b.logger.Warn("failed to build nickname cache for invitation", "error", err)
+		// Continue without nicknames - enrichVotesWithCache handles nil cache
+	}
+
+	// Enrich votes with nicknames using shared cache
+	b.enrichVotesWithCache(data.Participants, cache)
+	b.enrichVotesWithCache(data.ComingLater, cache)
+	b.enrichVotesWithCache(data.Undecided, cache)
 
 	return RenderInvitation(data)
 }

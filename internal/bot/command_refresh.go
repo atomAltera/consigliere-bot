@@ -54,11 +54,18 @@ func (b *Bot) handleRefresh(c tele.Context) error {
 				comingLater = data.Votes21
 			}
 
+			// Build a single cache for all voters (more efficient than 2 separate caches)
+			cache, cacheErr := b.buildNicknameCacheFromVotes(mainVoters, comingLater)
+			if cacheErr != nil {
+				b.logger.Warn("failed to build nickname cache for refresh", "error", cacheErr)
+				// Continue without nicknames - membersFromVotesWithCache handles nil cache
+			}
+
 			html, err := RenderCollectedMessage(&CollectedData{
 				EventDate:   p.EventDate,
 				StartTime:   startTime,
-				Members:     b.membersFromVotesWithNicknames(mainVoters),
-				ComingLater: b.membersFromVotesWithNicknames(comingLater),
+				Members:     b.membersFromVotesWithCache(mainVoters, cache),
+				ComingLater: b.membersFromVotesWithCache(comingLater, cache),
 			})
 			if err != nil {
 				b.logger.Warn("failed to render collected message for refresh", "error", err)

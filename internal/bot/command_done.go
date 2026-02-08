@@ -53,12 +53,19 @@ func (b *Bot) handleDone(c tele.Context) error {
 		}
 	}
 
+	// Build a single cache for all voters (more efficient than 2 separate caches)
+	cache, err := b.buildNicknameCacheFromVotes(result.MainVoters, result.ComingLater)
+	if err != nil {
+		b.logger.Warn("failed to build nickname cache for done message", "error", err)
+		// Continue without nicknames - membersFromVotesWithCache handles nil cache
+	}
+
 	// Render and send collected message
 	html, err := RenderCollectedMessage(&CollectedData{
 		EventDate:   p.EventDate,
 		StartTime:   result.StartTime,
-		Members:     b.membersFromVotesWithNicknames(result.MainVoters),
-		ComingLater: b.membersFromVotesWithNicknames(result.ComingLater),
+		Members:     b.membersFromVotesWithCache(result.MainVoters, cache),
+		ComingLater: b.membersFromVotesWithCache(result.ComingLater, cache),
 	})
 	if err != nil {
 		return WrapUserError(MsgFailedRenderCollected, err)
