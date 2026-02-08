@@ -121,9 +121,7 @@ func (b *Bot) refreshInvitationMessage(chatID int64) error {
 		return err
 	}
 
-	chat := &tele.Chat{ID: p.TgChatID}
-	msg := &tele.Message{ID: p.TgInvitationMessageID, Chat: chat}
-	_, err = b.bot.Edit(msg, html, tele.ModeHTML)
+	_, err = b.bot.Edit(MessageRef(p.TgChatID, p.TgInvitationMessageID), html, tele.ModeHTML)
 	return err
 }
 

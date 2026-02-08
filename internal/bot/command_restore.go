@@ -34,9 +34,7 @@ func (b *Bot) handleRestore(c tele.Context) error {
 
 	// Delete cancellation notification message
 	if p.TgCancelMessageID != 0 {
-		chat := &tele.Chat{ID: p.TgChatID}
-		msg := &tele.Message{ID: p.TgCancelMessageID, Chat: chat}
-		if err := b.bot.Delete(msg); err != nil {
+		if err := b.bot.Delete(MessageRef(p.TgChatID, p.TgCancelMessageID)); err != nil {
 			b.logger.Warn("failed to delete cancellation message", "error", err)
 		}
 		p.TgCancelMessageID = 0

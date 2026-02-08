@@ -59,8 +59,7 @@ func (b *Bot) RateLimit() tele.MiddlewareFunc {
 }
 
 func (b *Bot) isAdmin(chatID int64, userID int64) (bool, error) {
-	chat := &tele.Chat{ID: chatID}
-	member, err := b.bot.ChatMemberOf(chat, &tele.User{ID: userID})
+	member, err := b.bot.ChatMemberOf(MessageRef(chatID, 0).Chat, &tele.User{ID: userID})
 	if err != nil {
 		return false, err
 	}

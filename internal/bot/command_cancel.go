@@ -38,8 +38,7 @@ func (b *Bot) handleCancel(c tele.Context) error {
 
 	// Unpin the poll message if it was pinned
 	if p.TgMessageID != 0 {
-		chat := &tele.Chat{ID: p.TgChatID}
-		if err := c.Bot().Unpin(chat, p.TgMessageID); err != nil {
+		if err := c.Bot().Unpin(MessageRef(p.TgChatID, 0).Chat, p.TgMessageID); err != nil {
 			b.logger.Warn("failed to unpin poll message", "error", err)
 		}
 	}

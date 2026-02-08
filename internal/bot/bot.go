@@ -54,6 +54,15 @@ func (b *Bot) Stop() {
 	b.bot.Stop()
 }
 
+// MessageRef creates a Telegram message reference for use with Edit, Delete, Pin etc.
+// This avoids repetitive construction of chat and message structs throughout the codebase.
+func MessageRef(chatID int64, msgID int) *tele.Message {
+	return &tele.Message{
+		ID:   msgID,
+		Chat: &tele.Chat{ID: chatID},
+	}
+}
+
 func (b *Bot) Bot() *tele.Bot {
 	return b.bot
 }
@@ -192,9 +201,7 @@ func (b *Bot) UpdateInvitationMessage(p *poll.Poll, isCancelledOverride *bool) b
 		return false
 	}
 
-	chat := &tele.Chat{ID: p.TgChatID}
-	msg := &tele.Message{ID: p.TgInvitationMessageID, Chat: chat}
-	if _, err = b.bot.Edit(msg, html, tele.ModeHTML); err != nil {
+	if _, err = b.bot.Edit(MessageRef(p.TgChatID, p.TgInvitationMessageID), html, tele.ModeHTML); err != nil {
 		b.logger.Warn("failed to update invitation message", "error", err, "poll_id", p.ID)
 		return false
 	}

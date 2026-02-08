@@ -38,8 +38,7 @@ func (b *Bot) handlePoll(c tele.Context) error {
 
 	// Unpin old poll message if it was replaced and pinned
 	if result.ReplacedPoll != nil && result.ReplacedPoll.TgMessageID != 0 {
-		chat := &tele.Chat{ID: c.Chat().ID}
-		if err := c.Bot().Unpin(chat, result.ReplacedPoll.TgMessageID); err != nil {
+		if err := c.Bot().Unpin(MessageRef(c.Chat().ID, 0).Chat, result.ReplacedPoll.TgMessageID); err != nil {
 			// Non-critical: old message may have been deleted, just log
 			b.logger.Warn("failed to unpin replaced poll", "error", err)
 		}

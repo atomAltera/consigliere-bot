@@ -41,9 +41,7 @@ func (b *Bot) handleDone(c tele.Context) error {
 
 	// Delete old /done message if exists
 	if p.TgDoneMessageID != 0 {
-		chat := &tele.Chat{ID: p.TgChatID}
-		msg := &tele.Message{ID: p.TgDoneMessageID, Chat: chat}
-		if err := b.bot.Delete(msg); err != nil {
+		if err := b.bot.Delete(MessageRef(p.TgChatID, p.TgDoneMessageID)); err != nil {
 			b.logger.Warn("failed to delete old done message", "error", err)
 		}
 	}

@@ -26,7 +26,6 @@ func (b *Bot) handleRefresh(c tele.Context) error {
 		return WrapUserError(MsgFailedGetPoll, err)
 	}
 
-	chat := &tele.Chat{ID: p.TgChatID}
 	var refreshed int
 
 	// Refresh invitation message if exists
@@ -70,8 +69,7 @@ func (b *Bot) handleRefresh(c tele.Context) error {
 			if err != nil {
 				b.logger.Warn("failed to render collected message for refresh", "error", err)
 			} else {
-				msg := &tele.Message{ID: p.TgDoneMessageID, Chat: chat}
-				if _, err = b.bot.Edit(msg, html, tele.ModeHTML); err != nil {
+				if _, err = b.bot.Edit(MessageRef(p.TgChatID, p.TgDoneMessageID), html, tele.ModeHTML); err != nil {
 					b.logger.Warn("failed to refresh done message", "error", err)
 				} else {
 					refreshed++
@@ -95,8 +93,7 @@ func (b *Bot) handleRefresh(c tele.Context) error {
 			if err != nil {
 				b.logger.Warn("failed to render cancel message for refresh", "error", err)
 			} else {
-				msg := &tele.Message{ID: p.TgCancelMessageID, Chat: chat}
-				if _, err = b.bot.Edit(msg, html, tele.ModeHTML); err != nil {
+				if _, err = b.bot.Edit(MessageRef(p.TgChatID, p.TgCancelMessageID), html, tele.ModeHTML); err != nil {
 					b.logger.Warn("failed to refresh cancel message", "error", err)
 				} else {
 					refreshed++

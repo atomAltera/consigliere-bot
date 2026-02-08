@@ -28,18 +28,12 @@ func (b *Bot) handlePin(c tele.Context) error {
 	}
 
 	// Unpin all previously pinned messages before pinning the new one
-	chat := &tele.Chat{ID: p.TgChatID}
-	if err := c.Bot().UnpinAll(chat); err != nil {
+	if err := c.Bot().UnpinAll(MessageRef(p.TgChatID, 0).Chat); err != nil {
 		b.logger.Warn("failed to unpin previous messages", "error", err)
 	}
 
 	// Pin the poll message (without Silent option to notify all members)
-	msg := &tele.Message{
-		ID:   p.TgMessageID,
-		Chat: chat,
-	}
-
-	if err := c.Bot().Pin(msg); err != nil {
+	if err := c.Bot().Pin(MessageRef(p.TgChatID, p.TgMessageID)); err != nil {
 		return WrapUserError(MsgFailedPinPoll, err)
 	}
 

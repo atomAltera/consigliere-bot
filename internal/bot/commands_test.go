@@ -134,3 +134,46 @@ func TestParseEventDate_DayOfWeek(t *testing.T) {
 		}
 	}
 }
+
+func TestMessageRef(t *testing.T) {
+	tests := []struct {
+		name   string
+		chatID int64
+		msgID  int
+	}{
+		{
+			name:   "typical message reference",
+			chatID: -1001234567890,
+			msgID:  42,
+		},
+		{
+			name:   "zero message ID (chat-only reference)",
+			chatID: -1001234567890,
+			msgID:  0,
+		},
+		{
+			name:   "positive chat ID (private chat)",
+			chatID: 123456789,
+			msgID:  100,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			msg := MessageRef(tt.chatID, tt.msgID)
+
+			if msg == nil {
+				t.Fatal("MessageRef returned nil")
+			}
+			if msg.ID != tt.msgID {
+				t.Errorf("MessageRef(%d, %d).ID = %d, want %d", tt.chatID, tt.msgID, msg.ID, tt.msgID)
+			}
+			if msg.Chat == nil {
+				t.Fatal("MessageRef().Chat is nil")
+			}
+			if msg.Chat.ID != tt.chatID {
+				t.Errorf("MessageRef(%d, %d).Chat.ID = %d, want %d", tt.chatID, tt.msgID, msg.Chat.ID, tt.chatID)
+			}
+		})
+	}
+}
