@@ -1,7 +1,6 @@
 package bot
 
 import (
-	"errors"
 	"time"
 
 	tele "gopkg.in/telebot.v4"
@@ -20,12 +19,9 @@ func (b *Bot) handleResults(c tele.Context) error {
 	)
 
 	// Get active poll
-	p, err := b.pollService.GetActivePoll(c.Chat().ID)
+	p, err := b.GetActivePollOrError(c.Chat().ID)
 	if err != nil {
-		if errors.Is(err, poll.ErrNoActivePoll) {
-			return UserErrorf(MsgNoActivePoll)
-		}
-		return WrapUserError(MsgFailedGetPoll, err)
+		return err
 	}
 
 	// Get invitation data (votes grouped by option)

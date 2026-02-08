@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"errors"
 	"log/slog"
 	"time"
 
@@ -130,6 +131,19 @@ func (b *Bot) SendTemporary(to tele.Recipient, what any, delay time.Duration, op
 	}()
 
 	return msg, nil
+}
+
+// GetActivePollOrError retrieves the active poll for the given chat.
+// Returns a user-friendly error if no active poll exists or if retrieval fails.
+func (b *Bot) GetActivePollOrError(chatID int64) (*poll.Poll, error) {
+	p, err := b.pollService.GetActivePoll(chatID)
+	if err != nil {
+		if errors.Is(err, poll.ErrNoActivePoll) {
+			return nil, UserErrorf(MsgNoActivePoll)
+		}
+		return nil, WrapUserError(MsgFailedGetPoll, err)
+	}
+	return p, nil
 }
 
 // UpdateInvitationMessage updates the invitation message for a poll if it exists.

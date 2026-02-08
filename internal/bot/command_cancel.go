@@ -17,12 +17,9 @@ func (b *Bot) handleCancel(c tele.Context) error {
 	)
 
 	// Get active poll to check date first
-	p, err := b.pollService.GetActivePoll(c.Chat().ID)
+	p, err := b.GetActivePollOrError(c.Chat().ID)
 	if err != nil {
-		if errors.Is(err, poll.ErrNoActivePoll) {
-			return UserErrorf(MsgNoActivePoll)
-		}
-		return WrapUserError(MsgFailedGetPoll, err)
+		return err
 	}
 
 	// Check if event date is in the past
