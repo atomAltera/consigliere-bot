@@ -155,6 +155,22 @@ func (b *Bot) GetActivePollOrError(chatID int64) (*poll.Poll, error) {
 	return p, nil
 }
 
+// GetActivePollForAction retrieves the active poll and validates that its event date
+// has not passed. Use this for handlers that perform actions on the poll (cancel, vote, etc.).
+// For read-only operations that should work even after the event date, use GetActivePollOrError.
+func (b *Bot) GetActivePollForAction(chatID int64) (*poll.Poll, error) {
+	p, err := b.GetActivePollOrError(chatID)
+	if err != nil {
+		return nil, err
+	}
+
+	if isPollDatePassed(p.EventDate) {
+		return nil, UserErrorf(MsgPollDatePassed)
+	}
+
+	return p, nil
+}
+
 // RenderAndSend renders a message using the provided render function and sends it to the chat.
 // Returns the sent message (for cases that need the message ID) and any error.
 // Errors are wrapped with appropriate user-facing messages.

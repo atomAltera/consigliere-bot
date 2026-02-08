@@ -6,15 +6,10 @@ import (
 
 // handlePin pins the poll message
 func (b *Bot) handlePin(c tele.Context) error {
-	// Get active poll
-	p, err := b.GetActivePollOrError(c.Chat().ID)
+	// Get active poll (validates event date hasn't passed)
+	p, err := b.GetActivePollForAction(c.Chat().ID)
 	if err != nil {
 		return err
-	}
-
-	// Check if event date is in the past
-	if isPollDatePassed(p.EventDate) {
-		return UserErrorf(MsgPollDatePassed)
 	}
 
 	if p.TgMessageID == 0 {

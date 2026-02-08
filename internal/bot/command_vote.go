@@ -50,15 +50,10 @@ func (b *Bot) handleVote(c tele.Context) error {
 		"option", OptionLabel(poll.OptionKind(optionIndex)),
 	)
 
-	// Get active poll
-	p, err := b.GetActivePollOrError(c.Chat().ID)
+	// Get active poll (validates event date hasn't passed)
+	p, err := b.GetActivePollForAction(c.Chat().ID)
 	if err != nil {
 		return err
-	}
-
-	// Check if event date is in the past
-	if isPollDatePassed(p.EventDate) {
-		return UserErrorf(MsgPollDatePassed)
 	}
 
 	// Create vote with resolved user ID

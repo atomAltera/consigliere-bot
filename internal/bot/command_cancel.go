@@ -10,15 +10,10 @@ import (
 
 // handleCancel cancels the event and updates the invitation message with cancellation footer
 func (b *Bot) handleCancel(c tele.Context) error {
-	// Get active poll to check date first
-	p, err := b.GetActivePollOrError(c.Chat().ID)
+	// Get active poll (validates event date hasn't passed)
+	p, err := b.GetActivePollForAction(c.Chat().ID)
 	if err != nil {
 		return err
-	}
-
-	// Check if event date is in the past
-	if isPollDatePassed(p.EventDate) {
-		return UserErrorf(MsgPollDatePassed)
 	}
 
 	// Cancel poll via service (marks as inactive)

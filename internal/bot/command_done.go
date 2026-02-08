@@ -10,15 +10,10 @@ const minPlayersRequired = 11
 
 // handleDone announces that enough players have been collected for the game
 func (b *Bot) handleDone(c tele.Context) error {
-	// Get active poll
-	p, err := b.GetActivePollOrError(c.Chat().ID)
+	// Get active poll (validates event date hasn't passed)
+	p, err := b.GetActivePollForAction(c.Chat().ID)
 	if err != nil {
 		return err
-	}
-
-	// Check if event date is in the past
-	if isPollDatePassed(p.EventDate) {
-		return UserErrorf(MsgPollDatePassed)
 	}
 
 	// Get votes for 19:00, 20:00, and 21:00+
