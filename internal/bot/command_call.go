@@ -6,12 +6,6 @@ import (
 
 // handleCall sends a message mentioning all undecided voters
 func (b *Bot) handleCall(c tele.Context) error {
-	b.logger.Info("command /call",
-		"user_id", c.Sender().ID,
-		"username", c.Sender().Username,
-		"chat_id", c.Chat().ID,
-	)
-
 	// Get active poll
 	p, err := b.GetActivePollOrError(c.Chat().ID)
 	if err != nil {

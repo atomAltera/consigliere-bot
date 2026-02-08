@@ -10,12 +10,6 @@ import (
 
 // handleCancel cancels the event and updates the invitation message with cancellation footer
 func (b *Bot) handleCancel(c tele.Context) error {
-	b.logger.Info("command /cancel",
-		"user_id", c.Sender().ID,
-		"username", c.Sender().Username,
-		"chat_id", c.Chat().ID,
-	)
-
 	// Get active poll to check date first
 	p, err := b.GetActivePollOrError(c.Chat().ID)
 	if err != nil {

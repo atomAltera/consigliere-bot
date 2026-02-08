@@ -34,10 +34,7 @@ func (b *Bot) handleNick(c tele.Context) error {
 		return UserErrorf(MsgNickUsage)
 	}
 
-	b.logger.Info("command /nick",
-		"user_id", c.Sender().ID,
-		"username", c.Sender().Username,
-		"chat_id", c.Chat().ID,
+	b.logger.Info("nick parameters",
 		"tg_user_id", args.TgUserID,
 		"tg_username", args.TgUsername,
 		"game_nick", args.Nickname,

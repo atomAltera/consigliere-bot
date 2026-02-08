@@ -10,12 +10,6 @@ import (
 
 // handleRestore restores the last cancelled poll if it's for today or a future date
 func (b *Bot) handleRestore(c tele.Context) error {
-	b.logger.Info("command /restore",
-		"user_id", c.Sender().ID,
-		"username", c.Sender().Username,
-		"chat_id", c.Chat().ID,
-	)
-
 	// Restore poll via service (validates date, marks as active)
 	p, err := b.pollService.RestorePoll(c.Chat().ID)
 	if err != nil {

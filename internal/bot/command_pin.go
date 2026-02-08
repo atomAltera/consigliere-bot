@@ -6,12 +6,6 @@ import (
 
 // handlePin pins the poll message
 func (b *Bot) handlePin(c tele.Context) error {
-	b.logger.Info("command /pin",
-		"user_id", c.Sender().ID,
-		"username", c.Sender().Username,
-		"chat_id", c.Chat().ID,
-	)
-
 	// Get active poll
 	p, err := b.GetActivePollOrError(c.Chat().ID)
 	if err != nil {

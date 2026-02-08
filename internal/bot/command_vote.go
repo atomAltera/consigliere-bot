@@ -42,10 +42,7 @@ func (b *Bot) handleVote(c tele.Context) error {
 		return WrapUserError(MsgFailedRecordVote, err)
 	}
 
-	b.logger.Info("command /vote",
-		"user_id", c.Sender().ID,
-		"username", c.Sender().Username,
-		"chat_id", c.Chat().ID,
+	b.logger.Info("vote parameters",
 		"identifier", identifier,
 		"resolved_user_id", userID,
 		"resolved_username", username,

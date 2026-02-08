@@ -10,12 +10,6 @@ const minPlayersRequired = 11
 
 // handleDone announces that enough players have been collected for the game
 func (b *Bot) handleDone(c tele.Context) error {
-	b.logger.Info("command /done",
-		"user_id", c.Sender().ID,
-		"username", c.Sender().Username,
-		"chat_id", c.Chat().ID,
-	)
-
 	// Get active poll
 	p, err := b.GetActivePollOrError(c.Chat().ID)
 	if err != nil {

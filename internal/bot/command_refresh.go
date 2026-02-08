@@ -11,12 +11,6 @@ import (
 // handleRefresh re-renders and updates invitation, done, and cancel messages
 // for the latest poll in this chat, regardless of whether it's active or past.
 func (b *Bot) handleRefresh(c tele.Context) error {
-	b.logger.Info("command /refresh",
-		"user_id", c.Sender().ID,
-		"username", c.Sender().Username,
-		"chat_id", c.Chat().ID,
-	)
-
 	// Get latest poll (regardless of status)
 	p, err := b.pollService.GetLatestPoll(c.Chat().ID)
 	if err != nil {

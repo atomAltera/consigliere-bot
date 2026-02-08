@@ -19,12 +19,7 @@ func (b *Bot) handlePoll(c tele.Context) error {
 		return UserErrorf(MsgInvalidDateFormat)
 	}
 
-	b.logger.Info("command /poll",
-		"user_id", c.Sender().ID,
-		"username", c.Sender().Username,
-		"chat_id", c.Chat().ID,
-		"event_date", eventDate.Format("2006-01-02"),
-	)
+	b.logger.Info("poll parameters", "event_date", eventDate.Format("2006-01-02"))
 
 	// Create poll in database (service checks for existing poll)
 	result, err := b.pollService.CreatePoll(c.Chat().ID, eventDate)

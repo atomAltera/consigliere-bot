@@ -12,12 +12,6 @@ import (
 // Displays telegram IDs (copiable), usernames, names, and game nicknames.
 // Sent as a temporary silent message.
 func (b *Bot) handleResults(c tele.Context) error {
-	b.logger.Info("command /results",
-		"user_id", c.Sender().ID,
-		"username", c.Sender().Username,
-		"chat_id", c.Chat().ID,
-	)
-
 	// Get active poll
 	p, err := b.GetActivePollOrError(c.Chat().ID)
 	if err != nil {

@@ -243,3 +243,56 @@ func TestBot_DeleteCommand_ContinuesOnDeleteError(t *testing.T) {
 		t.Error("expected delete to be attempted even if it fails")
 	}
 }
+
+func TestExtractCommand(t *testing.T) {
+	tests := []struct {
+		name     string
+		text     string
+		expected string
+	}{
+		{
+			name:     "simple command",
+			text:     "/poll",
+			expected: "poll",
+		},
+		{
+			name:     "command with arguments",
+			text:     "/poll 2025-01-20",
+			expected: "poll",
+		},
+		{
+			name:     "command with bot mention",
+			text:     "/poll@mybot",
+			expected: "poll",
+		},
+		{
+			name:     "command with bot mention and arguments",
+			text:     "/poll@mybot 2025-01-20",
+			expected: "poll",
+		},
+		{
+			name:     "empty text",
+			text:     "",
+			expected: "",
+		},
+		{
+			name:     "text without slash",
+			text:     "poll",
+			expected: "poll",
+		},
+		{
+			name:     "command with multiple arguments",
+			text:     "/vote @user 3",
+			expected: "vote",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := extractCommand(tt.text)
+			if result != tt.expected {
+				t.Errorf("extractCommand(%q) = %q, want %q", tt.text, result, tt.expected)
+			}
+		})
+	}
+}

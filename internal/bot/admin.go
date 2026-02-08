@@ -107,6 +107,59 @@ func (b *Bot) DeleteCommand() tele.MiddlewareFunc {
 	}
 }
 
+// extractCommand extracts the command name from text like "/poll@bot arg1 arg2" -> "poll"
+func extractCommand(text string) string {
+	if text == "" {
+		return ""
+	}
+
+	// Remove leading slash if present
+	if text[0] == '/' {
+		text = text[1:]
+	}
+
+	// Get first word (command with possible @bot suffix)
+	firstWord := text
+	if idx := indexAny(text, " \t"); idx != -1 {
+		firstWord = text[:idx]
+	}
+
+	// Remove @bot suffix if present
+	if idx := indexAny(firstWord, "@"); idx != -1 {
+		firstWord = firstWord[:idx]
+	}
+
+	return firstWord
+}
+
+// indexAny returns the index of the first occurrence of any character in chars, or -1 if not found.
+func indexAny(s, chars string) int {
+	for i, c := range s {
+		for _, ch := range chars {
+			if c == ch {
+				return i
+			}
+		}
+	}
+	return -1
+}
+
+// LogCommand is a middleware that logs all executed commands with common context.
+// Should be placed after AdminOnly() to only log authorized commands.
+func (b *Bot) LogCommand() tele.MiddlewareFunc {
+	return func(next tele.HandlerFunc) tele.HandlerFunc {
+		return func(c tele.Context) error {
+			b.logger.Info("command",
+				"name", extractCommand(c.Text()),
+				"user_id", c.Sender().ID,
+				"username", c.Sender().Username,
+				"chat_id", c.Chat().ID,
+			)
+			return next(c)
+		}
+	}
+}
+
 // HandleErrors is a middleware that properly handles errors from command handlers.
 // It logs internal errors and sends appropriate messages to users:
 // - UserError: sends the user-friendly message (temporarily), logs if there's an underlying cause
