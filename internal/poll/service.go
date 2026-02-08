@@ -517,6 +517,53 @@ type CollectedData struct {
 	Votes21 []*Vote // voters for 21:00+
 }
 
+// StartTimeResult holds the result of determining start time and voter groups.
+type StartTimeResult struct {
+	EnoughPlayers bool     // true if minimum players requirement is met
+	StartTime     string   // "19:00" or "20:00" (empty if not enough players)
+	MainVoters    []*Vote  // voters to mention (starting at StartTime)
+	ComingLater   []*Vote  // voters coming later (21:00+ or 20:00+21:00 if starting at 19:00)
+}
+
+// DetermineStartTimeAndVoters determines the game start time based on voter counts.
+// If there are enough players at 19:00 (>= minPlayers), start at 19:00 and
+// 20:00+21:00 voters are coming later.
+// Otherwise, if 19:00+20:00 combined >= minPlayers, start at 20:00 and only
+// 21:00+ voters are coming later.
+// Returns EnoughPlayers=false if neither threshold is met.
+func DetermineStartTimeAndVoters(data *CollectedData, minPlayers int) StartTimeResult {
+	count19 := len(data.Votes19)
+	count20 := len(data.Votes20)
+	totalEarly := count19 + count20
+
+	if count19 >= minPlayers {
+		// Enough players at 19:00 - start at 19:00
+		// 20:00 and 21:00+ players are coming later
+		return StartTimeResult{
+			EnoughPlayers: true,
+			StartTime:     "19:00",
+			MainVoters:    data.Votes19,
+			ComingLater:   append(data.Votes20, data.Votes21...),
+		}
+	}
+
+	if totalEarly >= minPlayers {
+		// Combined 19:00 + 20:00 is enough - start at 20:00
+		// Only 21:00+ players are coming later
+		return StartTimeResult{
+			EnoughPlayers: true,
+			StartTime:     "20:00",
+			MainVoters:    append(data.Votes19, data.Votes20...),
+			ComingLater:   data.Votes21,
+		}
+	}
+
+	// Not enough players
+	return StartTimeResult{
+		EnoughPlayers: false,
+	}
+}
+
 // GetCollectedData returns votes for 19:00, 20:00, and 21:00+ options
 func (s *Service) GetCollectedData(pollID int64) (*CollectedData, error) {
 	votes, err := s.votes.GetCurrentVotes(pollID)

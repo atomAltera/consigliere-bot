@@ -375,3 +375,118 @@ func TestIntegration_GetVotes(t *testing.T) {
 		t.Errorf("expected undecided to be 'charlie', got %s", undecided[0].TgUsername)
 	}
 }
+
+func TestDetermineStartTimeAndVoters(t *testing.T) {
+	// Helper to create N votes
+	makeVotes := func(n int) []*Vote {
+		votes := make([]*Vote, n)
+		for i := range votes {
+			votes[i] = &Vote{TgUserID: int64(i + 1)}
+		}
+		return votes
+	}
+
+	tests := []struct {
+		name           string
+		votes19        []*Vote
+		votes20        []*Vote
+		votes21        []*Vote
+		minPlayers     int
+		wantStartTime  string
+		wantMainCount  int
+		wantLaterCount int
+		wantEnough     bool
+	}{
+		{
+			name:           "enough at 19:00 only",
+			votes19:        makeVotes(11),
+			votes20:        makeVotes(3),
+			votes21:        makeVotes(2),
+			minPlayers:     11,
+			wantStartTime:  "19:00",
+			wantMainCount:  11, // only 19:00 voters
+			wantLaterCount: 5,  // 20:00 + 21:00
+			wantEnough:     true,
+		},
+		{
+			name:           "not enough at 19:00, enough combined",
+			votes19:        makeVotes(5),
+			votes20:        makeVotes(7),
+			votes21:        makeVotes(2),
+			minPlayers:     11,
+			wantStartTime:  "20:00",
+			wantMainCount:  12, // 19:00 + 20:00
+			wantLaterCount: 2,  // only 21:00
+			wantEnough:     true,
+		},
+		{
+			name:           "not enough players total",
+			votes19:        makeVotes(3),
+			votes20:        makeVotes(4),
+			votes21:        makeVotes(2),
+			minPlayers:     11,
+			wantStartTime:  "",
+			wantMainCount:  0,
+			wantLaterCount: 0,
+			wantEnough:     false,
+		},
+		{
+			name:           "exact minimum at 19:00",
+			votes19:        makeVotes(11),
+			votes20:        makeVotes(0),
+			votes21:        makeVotes(0),
+			minPlayers:     11,
+			wantStartTime:  "19:00",
+			wantMainCount:  11,
+			wantLaterCount: 0,
+			wantEnough:     true,
+		},
+		{
+			name:           "exact minimum combined",
+			votes19:        makeVotes(5),
+			votes20:        makeVotes(6),
+			votes21:        makeVotes(0),
+			minPlayers:     11,
+			wantStartTime:  "20:00",
+			wantMainCount:  11,
+			wantLaterCount: 0,
+			wantEnough:     true,
+		},
+		{
+			name:           "no votes at all",
+			votes19:        nil,
+			votes20:        nil,
+			votes21:        nil,
+			minPlayers:     11,
+			wantStartTime:  "",
+			wantMainCount:  0,
+			wantLaterCount: 0,
+			wantEnough:     false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data := &CollectedData{
+				Votes19: tt.votes19,
+				Votes20: tt.votes20,
+				Votes21: tt.votes21,
+			}
+
+			result := DetermineStartTimeAndVoters(data, tt.minPlayers)
+
+			if result.EnoughPlayers != tt.wantEnough {
+				t.Errorf("EnoughPlayers = %v, want %v", result.EnoughPlayers, tt.wantEnough)
+			}
+			if result.StartTime != tt.wantStartTime {
+				t.Errorf("StartTime = %q, want %q", result.StartTime, tt.wantStartTime)
+			}
+			if len(result.MainVoters) != tt.wantMainCount {
+				t.Errorf("len(MainVoters) = %d, want %d", len(result.MainVoters), tt.wantMainCount)
+			}
+			if len(result.ComingLater) != tt.wantLaterCount {
+				t.Errorf("len(ComingLater) = %d, want %d", len(result.ComingLater), tt.wantLaterCount)
+			}
+		})
+	}
+}

@@ -32,35 +32,15 @@ func (b *Bot) handleDone(c tele.Context) error {
 		return UserErrorf(MsgPollDatePassed)
 	}
 
-	// Get votes for 19:00 and 20:00
+	// Get votes for 19:00, 20:00, and 21:00+
 	data, err := b.pollService.GetCollectedData(p.ID)
 	if err != nil {
 		return WrapUserError(MsgFailedGetResults, err)
 	}
 
-	count19 := len(data.Votes19)
-	count20 := len(data.Votes20)
-	totalEarly := count19 + count20
-
-	// Determine start time, which voters to mention, and who comes later
-	var startTime string
-	var votesToMention []*poll.Vote
-	var comingLater []*poll.Vote
-
-	if count19 >= minPlayersRequired {
-		// Enough players at 19:00 - start at 19:00
-		// 20:00 and 21:00+ players are coming later
-		startTime = "19:00"
-		votesToMention = data.Votes19
-		comingLater = append(data.Votes20, data.Votes21...)
-	} else if totalEarly >= minPlayersRequired {
-		// Combined 19:00 + 20:00 is enough - start at 20:00
-		// Only 21:00+ players are coming later
-		startTime = "20:00"
-		votesToMention = append(data.Votes19, data.Votes20...)
-		comingLater = data.Votes21
-	} else {
-		// Not enough players
+	// Determine start time and voter groups
+	result := poll.DetermineStartTimeAndVoters(data, minPlayersRequired)
+	if !result.EnoughPlayers {
 		return UserErrorf(MsgNotEnoughPlayers)
 	}
 
@@ -76,9 +56,9 @@ func (b *Bot) handleDone(c tele.Context) error {
 	// Render and send collected message
 	html, err := RenderCollectedMessage(&CollectedData{
 		EventDate:   p.EventDate,
-		StartTime:   startTime,
-		Members:     b.membersFromVotesWithNicknames(votesToMention),
-		ComingLater: b.membersFromVotesWithNicknames(comingLater),
+		StartTime:   result.StartTime,
+		Members:     b.membersFromVotesWithNicknames(result.MainVoters),
+		ComingLater: b.membersFromVotesWithNicknames(result.ComingLater),
 	})
 	if err != nil {
 		return WrapUserError(MsgFailedRenderCollected, err)

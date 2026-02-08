@@ -40,33 +40,24 @@ func (b *Bot) handleRefresh(c tele.Context) error {
 		if err != nil {
 			b.logger.Warn("failed to get collected data for refresh", "error", err)
 		} else {
-			count19 := len(data.Votes19)
-			count20 := len(data.Votes20)
-			totalEarly := count19 + count20
+			// Determine start time and voter groups
+			// Note: for refresh, we don't check EnoughPlayers since the done message already exists
+			result := poll.DetermineStartTimeAndVoters(data, minPlayersRequired)
+			startTime := result.StartTime
+			mainVoters := result.MainVoters
+			comingLater := result.ComingLater
 
-			var startTime string
-			var votesToMention []*poll.Vote
-			var comingLater []*poll.Vote
-
-			if count19 >= minPlayersRequired {
-				startTime = "19:00"
-				votesToMention = data.Votes19
-				comingLater = append(data.Votes20, data.Votes21...)
-			} else if totalEarly >= minPlayersRequired {
+			// Fallback if not enough players (message was created when there were enough)
+			if !result.EnoughPlayers {
 				startTime = "20:00"
-				votesToMention = append(data.Votes19, data.Votes20...)
-				comingLater = data.Votes21
-			} else {
-				// Not enough players - use all early voters and coming later
-				startTime = "20:00"
-				votesToMention = append(data.Votes19, data.Votes20...)
+				mainVoters = append(data.Votes19, data.Votes20...)
 				comingLater = data.Votes21
 			}
 
 			html, err := RenderCollectedMessage(&CollectedData{
 				EventDate:   p.EventDate,
 				StartTime:   startTime,
-				Members:     b.membersFromVotesWithNicknames(votesToMention),
+				Members:     b.membersFromVotesWithNicknames(mainVoters),
 				ComingLater: b.membersFromVotesWithNicknames(comingLater),
 			})
 			if err != nil {
