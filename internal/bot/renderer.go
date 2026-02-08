@@ -208,8 +208,8 @@ func InitTemplates() error {
 	return nil
 }
 
-// RenderPollTitle renders the poll title for the given event date.
-func RenderPollTitle(eventDate time.Time) (string, error) {
+// RenderPollTitleMessage renders the poll title for the given event date.
+func RenderPollTitleMessage(eventDate time.Time) (string, error) {
 	var buf bytes.Buffer
 	if err := pollTitleTmpl.Execute(&buf, eventDate); err != nil {
 		return "", err
@@ -217,9 +217,9 @@ func RenderPollTitle(eventDate time.Time) (string, error) {
 	return buf.String(), nil
 }
 
-// RenderInvitation renders the invitation message for the given data.
+// RenderInvitationMessage renders the invitation message for the given data.
 // If the message exceeds Telegram's limit, participant lists are truncated.
-func RenderInvitation(data *poll.InvitationData) (string, error) {
+func RenderInvitationMessage(data *poll.InvitationData) (string, error) {
 	var buf bytes.Buffer
 	if err := invitationTmpl.Execute(&buf, data); err != nil {
 		return "", err

@@ -57,7 +57,7 @@ func (b *Bot) handlePoll(c tele.Context) error {
 		IsCancelled:  false,
 	}
 
-	invitationHTML, err := RenderInvitation(invitationData)
+	invitationHTML, err := RenderInvitationMessage(invitationData)
 	if err != nil {
 		rollbackPoll()
 		return WrapUserError(MsgFailedRenderResults, err)
@@ -75,7 +75,7 @@ func (b *Bot) handlePoll(c tele.Context) error {
 	p.TgInvitationMessageID = invitationMsg.ID
 
 	// Render poll title from template
-	pollTitle, err := RenderPollTitle(eventDate)
+	pollTitle, err := RenderPollTitleMessage(eventDate)
 	if err != nil {
 		// Clean up invitation message and rollback poll on failure
 		_ = b.bot.Delete(invitationMsg)

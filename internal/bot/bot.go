@@ -208,7 +208,7 @@ func (b *Bot) UpdateInvitationMessage(p *poll.Poll, isCancelledOverride *bool) b
 		results.IsCancelled = *isCancelledOverride
 	}
 
-	html, err := b.RenderInvitationWithNicks(results)
+	html, err := b.RenderInvitationMessageWithNicks(results)
 	if err != nil {
 		b.logger.Warn("failed to render invitation", "error", err, "poll_id", p.ID)
 		return false

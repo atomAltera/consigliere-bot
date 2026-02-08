@@ -92,8 +92,8 @@ func (b *Bot) handleNick(c tele.Context) error {
 	return err
 }
 
-// RenderInvitationWithNicks renders invitation with nicknames resolved.
-func (b *Bot) RenderInvitationWithNicks(data *poll.InvitationData) (string, error) {
+// RenderInvitationMessageWithNicks renders invitation with nicknames resolved.
+func (b *Bot) RenderInvitationMessageWithNicks(data *poll.InvitationData) (string, error) {
 	// Build a single cache for all vote lists (more efficient than 3 separate caches)
 	cache, err := b.buildNicknameCacheFromVotes(data.Participants, data.ComingLater, data.Undecided)
 	if err != nil {
@@ -106,5 +106,5 @@ func (b *Bot) RenderInvitationWithNicks(data *poll.InvitationData) (string, erro
 	b.enrichVotesWithCache(data.ComingLater, cache)
 	b.enrichVotesWithCache(data.Undecided, cache)
 
-	return RenderInvitation(data)
+	return RenderInvitationMessage(data)
 }
