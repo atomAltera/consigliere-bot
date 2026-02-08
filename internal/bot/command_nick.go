@@ -73,8 +73,10 @@ func (b *Bot) handleNick(c tele.Context) error {
 	}
 
 	// Update invitation message if exists (regardless of user ID - can match by username)
-	if err := b.refreshInvitationMessage(c.Chat().ID); err != nil {
-		b.logger.Warn("failed to refresh invitation after nick", "error", err)
+	if p, err := b.pollService.GetActivePoll(c.Chat().ID); err == nil {
+		b.UpdateInvitationMessage(p, nil)
+	} else if !errors.Is(err, poll.ErrNoActivePoll) {
+		b.logger.Warn("failed to get poll for invitation refresh", "error", err)
 	}
 
 	// Send confirmation
@@ -92,37 +94,6 @@ func (b *Bot) handleNick(c tele.Context) error {
 	_, err = b.SendTemporary(c.Chat(), msg, 0)
 	return err
 }
-
-// refreshInvitationMessage updates the invitation message if an active poll exists.
-func (b *Bot) refreshInvitationMessage(chatID int64) error {
-	p, err := b.pollService.GetActivePoll(chatID)
-	if err != nil {
-		if errors.Is(err, poll.ErrNoActivePoll) {
-			return nil // No active poll is fine
-		}
-		return err // Propagate real errors
-	}
-
-	if p.TgInvitationMessageID == 0 {
-		return nil // No invitation message to update
-	}
-
-	results, err := b.pollService.GetInvitationData(p.ID)
-	if err != nil {
-		return err
-	}
-
-	p.PopulateInvitationData(results)
-
-	html, err := b.RenderInvitationWithNicks(results)
-	if err != nil {
-		return err
-	}
-
-	_, err = b.bot.Edit(MessageRef(p.TgChatID, p.TgInvitationMessageID), html, tele.ModeHTML)
-	return err
-}
-
 
 // RenderInvitationWithNicks renders invitation with nicknames resolved.
 func (b *Bot) RenderInvitationWithNicks(data *poll.InvitationData) (string, error) {
