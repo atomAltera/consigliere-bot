@@ -65,27 +65,7 @@ func (b *Bot) handlePollAnswer(c tele.Context) error {
 	}
 
 	// Update invitation message if exists
-	if p.TgInvitationMessageID != 0 {
-		results, err := b.pollService.GetInvitationData(p.ID)
-		if err != nil {
-			return fmt.Errorf("get invitation data: %w", err)
-		}
-		results.Poll = p
-		results.EventDate = p.EventDate
-		results.IsCancelled = !p.IsActive
-
-		html, err := b.RenderInvitationWithNicks(results)
-		if err != nil {
-			return fmt.Errorf("render invitation: %w", err)
-		}
-
-		chat := &tele.Chat{ID: p.TgChatID}
-		msg := &tele.Message{ID: p.TgInvitationMessageID, Chat: chat}
-		if _, err = b.bot.Edit(msg, html, tele.ModeHTML); err != nil {
-			// Non-critical: message may have been deleted, just log
-			b.logger.Warn("failed to update invitation message", "error", err)
-		}
-	}
+	b.UpdateInvitationMessage(p, nil)
 
 	return nil
 }

@@ -29,27 +29,8 @@ func (b *Bot) handleRestore(c tele.Context) error {
 	}
 
 	// Update invitation message to remove cancellation footer
-	if p.TgInvitationMessageID != 0 {
-		results, err := b.pollService.GetInvitationData(p.ID)
-		if err != nil {
-			b.logger.Warn("failed to get invitation data for restore", "error", err)
-		} else {
-			results.Poll = p
-			results.EventDate = p.EventDate
-			results.IsCancelled = false
-
-			html, err := RenderInvitation(results)
-			if err != nil {
-				b.logger.Warn("failed to render restored invitation", "error", err)
-			} else {
-				chat := &tele.Chat{ID: p.TgChatID}
-				msg := &tele.Message{ID: p.TgInvitationMessageID, Chat: chat}
-				if _, err = b.bot.Edit(msg, html, tele.ModeHTML); err != nil {
-					b.logger.Warn("failed to update invitation message", "error", err)
-				}
-			}
-		}
-	}
+	notCancelled := false
+	b.UpdateInvitationMessage(p, &notCancelled)
 
 	// Delete cancellation notification message
 	if p.TgCancelMessageID != 0 {

@@ -131,3 +131,42 @@ func (b *Bot) SendTemporary(to tele.Recipient, what any, delay time.Duration, op
 
 	return msg, nil
 }
+
+// UpdateInvitationMessage updates the invitation message for a poll if it exists.
+// If isCancelledOverride is provided, it overrides the default IsCancelled value (which is !p.IsActive).
+// Returns true if the message was successfully updated, false otherwise.
+// This is a non-critical operation - errors are logged but not returned since the message may have been deleted.
+func (b *Bot) UpdateInvitationMessage(p *poll.Poll, isCancelledOverride *bool) bool {
+	if p.TgInvitationMessageID == 0 {
+		return false
+	}
+
+	results, err := b.pollService.GetInvitationData(p.ID)
+	if err != nil {
+		b.logger.Warn("failed to get invitation data", "error", err, "poll_id", p.ID)
+		return false
+	}
+
+	results.Poll = p
+	results.EventDate = p.EventDate
+	if isCancelledOverride != nil {
+		results.IsCancelled = *isCancelledOverride
+	} else {
+		results.IsCancelled = !p.IsActive
+	}
+
+	html, err := b.RenderInvitationWithNicks(results)
+	if err != nil {
+		b.logger.Warn("failed to render invitation", "error", err, "poll_id", p.ID)
+		return false
+	}
+
+	chat := &tele.Chat{ID: p.TgChatID}
+	msg := &tele.Message{ID: p.TgInvitationMessageID, Chat: chat}
+	if _, err = b.bot.Edit(msg, html, tele.ModeHTML); err != nil {
+		b.logger.Warn("failed to update invitation message", "error", err, "poll_id", p.ID)
+		return false
+	}
+
+	return true
+}

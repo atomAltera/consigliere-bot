@@ -30,27 +30,8 @@ func (b *Bot) handleRefresh(c tele.Context) error {
 	var refreshed int
 
 	// Refresh invitation message if exists
-	if p.TgInvitationMessageID != 0 {
-		results, err := b.pollService.GetInvitationData(p.ID)
-		if err != nil {
-			return WrapUserError(MsgFailedGetResults, err)
-		}
-
-		results.Poll = p
-		results.EventDate = p.EventDate
-		results.IsCancelled = !p.IsActive
-
-		html, err := b.RenderInvitationWithNicks(results)
-		if err != nil {
-			return WrapUserError(MsgFailedRenderResults, err)
-		}
-
-		msg := &tele.Message{ID: p.TgInvitationMessageID, Chat: chat}
-		if _, err = b.bot.Edit(msg, html, tele.ModeHTML); err != nil {
-			b.logger.Warn("failed to refresh invitation message", "error", err)
-		} else {
-			refreshed++
-		}
+	if b.UpdateInvitationMessage(p, nil) {
+		refreshed++
 	}
 
 	// Refresh done message if exists
