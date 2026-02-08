@@ -59,14 +59,11 @@ func (b *Bot) handleCancel(c tele.Context) error {
 		cancelData.Members = MembersFromVotes(votes)
 	}
 
-	cancellationMsg, err := RenderCancelMessage(cancelData)
+	sentMsg, err := b.RenderAndSend(c, func() (string, error) {
+		return RenderCancelMessage(cancelData)
+	}, MsgFailedRenderCancellation, MsgFailedSendCancellation)
 	if err != nil {
-		return WrapUserError(MsgFailedRenderCancellation, err)
-	}
-
-	sentMsg, err := b.SendWithRetry(c.Chat(), cancellationMsg, tele.ModeHTML)
-	if err != nil {
-		return WrapUserError(MsgFailedSendCancellation, err)
+		return err
 	}
 
 	// Save cancel message ID

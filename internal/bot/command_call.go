@@ -34,18 +34,11 @@ func (b *Bot) handleCall(c tele.Context) error {
 	}
 
 	// Render and send call message
-	html, err := RenderCallMessage(&CallData{
-		EventDate: p.EventDate,
-		Members:   MembersFromVotes(votes),
-	})
-	if err != nil {
-		return WrapUserError(MsgFailedRenderCall, err)
-	}
-
-	_, err = b.SendWithRetry(c.Chat(), html, tele.ModeHTML)
-	if err != nil {
-		return WrapUserError(MsgFailedSendCall, err)
-	}
-
-	return nil
+	_, err = b.RenderAndSend(c, func() (string, error) {
+		return RenderCallMessage(&CallData{
+			EventDate: p.EventDate,
+			Members:   MembersFromVotes(votes),
+		})
+	}, MsgFailedRenderCall, MsgFailedSendCall)
+	return err
 }

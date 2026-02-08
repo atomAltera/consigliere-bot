@@ -49,17 +49,14 @@ func (b *Bot) handleRestore(c tele.Context) error {
 	}
 
 	// Render and send restore message
-	html, err := RenderRestoreMessage(&RestoreData{
-		EventDate: p.EventDate,
-		Members:   MembersFromVotes(votes),
-	})
+	_, err = b.RenderAndSend(c, func() (string, error) {
+		return RenderRestoreMessage(&RestoreData{
+			EventDate: p.EventDate,
+			Members:   MembersFromVotes(votes),
+		})
+	}, MsgFailedRenderRestore, MsgFailedSendRestore)
 	if err != nil {
-		return WrapUserError(MsgFailedRenderRestore, err)
-	}
-
-	_, err = b.SendWithRetry(c.Chat(), html, tele.ModeHTML)
-	if err != nil {
-		return WrapUserError(MsgFailedSendRestore, err)
+		return err
 	}
 
 	// Save poll (clear cancel message ID)

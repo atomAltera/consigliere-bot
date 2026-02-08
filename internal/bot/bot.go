@@ -146,6 +146,23 @@ func (b *Bot) GetActivePollOrError(chatID int64) (*poll.Poll, error) {
 	return p, nil
 }
 
+// RenderAndSend renders a message using the provided render function and sends it to the chat.
+// Returns the sent message (for cases that need the message ID) and any error.
+// Errors are wrapped with appropriate user-facing messages.
+func (b *Bot) RenderAndSend(c tele.Context, renderFunc func() (string, error), renderErrMsg, sendErrMsg string) (*tele.Message, error) {
+	html, err := renderFunc()
+	if err != nil {
+		return nil, WrapUserError(renderErrMsg, err)
+	}
+
+	msg, err := b.SendWithRetry(c.Chat(), html, tele.ModeHTML)
+	if err != nil {
+		return nil, WrapUserError(sendErrMsg, err)
+	}
+
+	return msg, nil
+}
+
 // UpdateInvitationMessage updates the invitation message for a poll if it exists.
 // If isCancelledOverride is provided, it overrides the default IsCancelled value (which is !p.IsActive).
 // Returns true if the message was successfully updated, false otherwise.

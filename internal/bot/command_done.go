@@ -56,19 +56,16 @@ func (b *Bot) handleDone(c tele.Context) error {
 	}
 
 	// Render and send collected message
-	html, err := RenderCollectedMessage(&CollectedData{
-		EventDate:   p.EventDate,
-		StartTime:   result.StartTime,
-		Members:     b.membersFromVotesWithCache(result.MainVoters, cache),
-		ComingLater: b.membersFromVotesWithCache(result.ComingLater, cache),
-	})
+	sentMsg, err := b.RenderAndSend(c, func() (string, error) {
+		return RenderCollectedMessage(&CollectedData{
+			EventDate:   p.EventDate,
+			StartTime:   result.StartTime,
+			Members:     b.membersFromVotesWithCache(result.MainVoters, cache),
+			ComingLater: b.membersFromVotesWithCache(result.ComingLater, cache),
+		})
+	}, MsgFailedRenderCollected, MsgFailedSendCollected)
 	if err != nil {
-		return WrapUserError(MsgFailedRenderCollected, err)
-	}
-
-	sentMsg, err := b.SendWithRetry(c.Chat(), html, tele.ModeHTML)
-	if err != nil {
-		return WrapUserError(MsgFailedSendCollected, err)
+		return err
 	}
 
 	// Store done message ID
