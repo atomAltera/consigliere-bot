@@ -2,6 +2,9 @@ package bot
 
 import (
 	"errors"
+	"fmt"
+	"strconv"
+	"strings"
 
 	tele "gopkg.in/telebot.v4"
 
@@ -43,8 +46,49 @@ func (b *Bot) uncancelPoll(chatID int64) (*poll.Poll, error) {
 	return p, nil
 }
 
+// parseStartTime parses a start time argument.
+// Accepts: "19" → "19:00", "20" → "20:00", or "HH:MM" format.
+// Returns formatted "HH:MM" string or error if invalid.
+func parseStartTime(arg string) (string, error) {
+	var hours, minutes int
+	var err error
+
+	if parts := strings.SplitN(arg, ":", 2); len(parts) == 2 {
+		hours, err = strconv.Atoi(parts[0])
+		if err != nil {
+			return "", fmt.Errorf("invalid hours: %s", parts[0])
+		}
+		minutes, err = strconv.Atoi(parts[1])
+		if err != nil {
+			return "", fmt.Errorf("invalid minutes: %s", parts[1])
+		}
+	} else {
+		hours, err = strconv.Atoi(arg)
+		if err != nil {
+			return "", fmt.Errorf("invalid time: %s", arg)
+		}
+		minutes = 0
+	}
+
+	if hours < 0 || hours > 23 || minutes < 0 || minutes > 59 {
+		return "", fmt.Errorf("time out of range: %02d:%02d", hours, minutes)
+	}
+
+	return fmt.Sprintf("%d:%02d", hours, minutes), nil
+}
+
 // handleDone announces that enough players have been collected for the game
 func (b *Bot) handleDone(c tele.Context) error {
+	// Parse optional start time argument
+	var overrideTime string
+	if args := c.Args(); len(args) > 0 {
+		t, err := parseStartTime(args[0])
+		if err != nil {
+			return UserErrorf(MsgInvalidStartTime)
+		}
+		overrideTime = t
+	}
+
 	// Get active poll, or silently uncancel a cancelled poll
 	chatID := c.Chat().ID
 	p, err := b.pollService.GetActivePoll(chatID)
@@ -61,17 +105,37 @@ func (b *Bot) handleDone(c tele.Context) error {
 		return UserErrorf(MsgPollDatePassed)
 	}
 
-	// Get votes for 19:00, 20:00, and 21:00+
+	// Get votes categorized by time slot
 	data, err := b.pollService.GetCollectedData(p.ID)
 	if err != nil {
 		return WrapUserError(MsgFailedGetResults, err)
 	}
 
-	// Determine start time and voter groups
-	result := poll.DetermineStartTimeAndVoters(data, minPlayersRequired)
-	if !result.EnoughPlayers {
-		return UserErrorf(MsgNotEnoughPlayers)
+	var startTime string
+	var mainVoters, laterVoters []*poll.Vote
+
+	if overrideTime != "" {
+		// Manual mode: use provided time, split voters accordingly, no player count check
+		startTime = overrideTime
+		mainVoters, laterVoters = poll.SplitVotersByStartTime(data, startTime)
+	} else {
+		// Auto mode: determine start time from vote counts
+		result := poll.DetermineStartTimeAndVoters(data, minPlayersRequired)
+		if !result.EnoughPlayers {
+			return UserErrorf(MsgNotEnoughPlayers)
+		}
+		startTime = result.StartTime
+		mainVoters = result.MainVoters
+		laterVoters = result.ComingLater
 	}
+
+	// Build nickname cache and convert to members
+	cache, err := b.buildNicknameCacheFromVotes(mainVoters, laterVoters)
+	if err != nil {
+		b.logger.Warn("failed to build nickname cache for done message", "error", err)
+	}
+	members := b.membersFromVotesWithCache(mainVoters, cache)
+	comingLater := b.membersFromVotesWithCache(laterVoters, cache)
 
 	// Delete old /done message if exists
 	if p.TgDoneMessageID != 0 {
@@ -80,28 +144,22 @@ func (b *Bot) handleDone(c tele.Context) error {
 		}
 	}
 
-	// Build a single cache for all voters (more efficient than 2 separate caches)
-	cache, err := b.buildNicknameCacheFromVotes(result.MainVoters, result.ComingLater)
-	if err != nil {
-		b.logger.Warn("failed to build nickname cache for done message", "error", err)
-		// Continue without nicknames - membersFromVotesWithCache handles nil cache
-	}
-
 	// Render and send collected message
 	sentMsg, err := b.RenderAndSend(c, func() (string, error) {
 		return RenderCollectedMessage(&CollectedData{
 			EventDate:   p.EventDate,
-			StartTime:   result.StartTime,
-			Members:     b.membersFromVotesWithCache(result.MainVoters, cache),
-			ComingLater: b.membersFromVotesWithCache(result.ComingLater, cache),
+			StartTime:   startTime,
+			Members:     members,
+			ComingLater: comingLater,
 		})
 	}, MsgFailedRenderCollected, MsgFailedSendCollected)
 	if err != nil {
 		return err
 	}
 
-	// Store done message ID
+	// Store done message ID and start time
 	p.TgDoneMessageID = sentMsg.ID
+	p.StartTime = startTime
 	if err := b.pollService.UpdatePoll(p); err != nil {
 		return WrapUserError(MsgFailedSavePollStatus, err)
 	}

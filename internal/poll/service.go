@@ -564,6 +564,37 @@ func DetermineStartTimeAndVoters(data *CollectedData, minPlayers int) StartTimeR
 	}
 }
 
+// SplitVotersByStartTime splits collected votes into main/later groups based on start time.
+// If start time < 20:00: main = 19:00 voters, later = 20:00 + 21:00+
+// If start time >= 20:00 and < 21:00: main = 19:00 + 20:00, later = 21:00+
+// If start time >= 21:00: main = all attending, later = none
+func SplitVotersByStartTime(data *CollectedData, startTime string) (mainVoters, comingLater []*Vote) {
+	// Parse hour from start time to determine split
+	hour := 20 // default fallback
+	if len(startTime) >= 2 {
+		h := 0
+		for _, c := range startTime {
+			if c == ':' {
+				break
+			}
+			h = h*10 + int(c-'0')
+		}
+		hour = h
+	}
+
+	switch {
+	case hour < 20:
+		mainVoters = data.Votes19
+		comingLater = append(data.Votes20, data.Votes21...)
+	case hour < 21:
+		mainVoters = append(data.Votes19, data.Votes20...)
+		comingLater = data.Votes21
+	default:
+		mainVoters = append(data.Votes19, append(data.Votes20, data.Votes21...)...)
+	}
+	return
+}
+
 // GetCollectedData returns votes for 19:00, 20:00, and 21:00+ options
 func (s *Service) GetCollectedData(pollID int64) (*CollectedData, error) {
 	votes, err := s.votes.GetCurrentVotes(pollID)

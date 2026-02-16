@@ -33,25 +33,31 @@ func (b *Bot) handleRefresh(c tele.Context) error {
 		if err != nil {
 			b.logger.Warn("failed to get collected data for refresh", "error", err)
 		} else {
-			// Determine start time and voter groups
-			// Note: for refresh, we don't check EnoughPlayers since the done message already exists
-			result := poll.DetermineStartTimeAndVoters(data, minPlayersRequired)
-			startTime := result.StartTime
-			mainVoters := result.MainVoters
-			comingLater := result.ComingLater
+			// Use saved start time if available, otherwise recalculate
+			var startTime string
+			var mainVoters, comingLater []*poll.Vote
 
-			// Fallback if not enough players (message was created when there were enough)
-			if !result.EnoughPlayers {
-				startTime = "20:00"
-				mainVoters = append(data.Votes19, data.Votes20...)
-				comingLater = data.Votes21
+			if p.StartTime != "" {
+				startTime = p.StartTime
+				mainVoters, comingLater = poll.SplitVotersByStartTime(data, startTime)
+			} else {
+				// Fallback for polls created before start_time was saved
+				result := poll.DetermineStartTimeAndVoters(data, minPlayersRequired)
+				startTime = result.StartTime
+				mainVoters = result.MainVoters
+				comingLater = result.ComingLater
+
+				if !result.EnoughPlayers {
+					startTime = "20:00"
+					mainVoters = append(data.Votes19, data.Votes20...)
+					comingLater = data.Votes21
+				}
 			}
 
 			// Build a single cache for all voters (more efficient than 2 separate caches)
 			cache, cacheErr := b.buildNicknameCacheFromVotes(mainVoters, comingLater)
 			if cacheErr != nil {
 				b.logger.Warn("failed to build nickname cache for refresh", "error", cacheErr)
-				// Continue without nicknames - membersFromVotesWithCache handles nil cache
 			}
 
 			html, err := RenderCollectedMessage(&CollectedData{

@@ -90,6 +90,8 @@ func (d *DB) Migrate() error {
 	migrations := []string{
 		// Add gender column to nicknames if it doesn't exist
 		`ALTER TABLE nicknames ADD COLUMN gender TEXT`,
+		// Add start_time column to polls for persisting /done start time
+		`ALTER TABLE polls ADD COLUMN start_time TEXT`,
 	}
 
 	_, err := d.db.Exec(schema)

@@ -96,13 +96,13 @@ func formatMentions(members []Member) string {
 }
 
 // formatCollectedMembers formats members for the /done message.
-// Shows numbered list with game nick first, then @username if available.
+// Shows dash-prefixed list with game nick first, then @username if available.
 func formatCollectedMembers(members []Member) string {
 	if len(members) == 0 {
 		return ""
 	}
 	lines := make([]string, 0, len(members))
-	for i, m := range members {
+	for _, m := range members {
 		var line string
 		if m.Nickname != "" {
 			line = m.Nickname
@@ -115,7 +115,7 @@ func formatCollectedMembers(members []Member) string {
 			line = m.TgName
 		}
 		if line != "" {
-			lines = append(lines, fmt.Sprintf("%d. %s", i+1, line))
+			lines = append(lines, "— "+line)
 		}
 	}
 	return strings.Join(lines, "\n")

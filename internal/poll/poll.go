@@ -12,6 +12,7 @@ type Poll struct {
 	TgInvitationMessageID int
 	TgCancelMessageID     int
 	TgDoneMessageID       int
+	StartTime             string // Saved start time from /done (e.g. "19:00", "20:00"), empty if not set
 	EventDate          time.Time
 	Options            []OptionKind
 	IsActive           bool
