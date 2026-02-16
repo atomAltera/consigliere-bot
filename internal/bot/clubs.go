@@ -26,6 +26,7 @@ type ClubConfig struct {
 	Name            string
 	DefaultWeekDays []time.Weekday
 	Admins          []int64
+	MediaDir        string // subdirectory under media/ for event videos (empty = no video)
 	FeatureFlags    FeatureFlags
 	templates       *template.Template // unexported, accessed within bot package only
 }
@@ -38,6 +39,7 @@ var vanmoConfig = &ClubConfig{
 		UserSectris,
 		UserFrancuz,
 	},
+	MediaDir: "vanmo",
 }
 
 var tbilissimoConfig = &ClubConfig{

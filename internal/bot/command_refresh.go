@@ -71,7 +71,13 @@ func (b *Bot) handleRefresh(c tele.Context) error {
 			if err != nil {
 				b.logger.Warn("failed to render collected message for refresh", "error", err)
 			} else {
-				if _, err = b.bot.Edit(MessageRef(p.TgChatID, p.TgDoneMessageID), html, tele.ModeHTML); err != nil && !isNotModifiedErr(err) {
+				msgRef := MessageRef(p.TgChatID, p.TgDoneMessageID)
+				if config.MediaDir != "" {
+					_, err = b.bot.EditCaption(msgRef, html, tele.ModeHTML)
+				} else {
+					_, err = b.bot.Edit(msgRef, html, tele.ModeHTML)
+				}
+				if err != nil && !isNotModifiedErr(err) {
 					b.logger.Warn("failed to refresh done message", "error", err)
 				} else {
 					refreshed++

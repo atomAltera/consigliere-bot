@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"strconv"
@@ -146,17 +147,35 @@ func (b *Bot) handleDone(c tele.Context) error {
 		}
 	}
 
-	// Render and send collected message
-	sentMsg, err := b.RenderAndSend(c, func() (string, error) {
-		return RenderCollectedMessage(config.templates, &CollectedData{
-			EventDate:   p.EventDate,
-			StartTime:   startTime,
-			Members:     members,
-			ComingLater: comingLater,
-		})
-	}, MsgFailedRenderCollected, MsgFailedSendCollected)
+	// Render collected message
+	html, err := RenderCollectedMessage(config.templates, &CollectedData{
+		EventDate:   p.EventDate,
+		StartTime:   startTime,
+		Members:     members,
+		ComingLater: comingLater,
+	})
 	if err != nil {
-		return err
+		return WrapUserError(MsgFailedRenderCollected, err)
+	}
+
+	// Send as video with caption if club has media, otherwise as text.
+	// If video send fails, fall back to plain text.
+	var sentMsg *tele.Message
+	if videoData, ok := GetEventVideo(config.MediaDir, p.EventDate.Weekday()); ok {
+		video := &tele.Video{
+			File:    tele.FromReader(bytes.NewReader(videoData)),
+			Caption: html,
+		}
+		sentMsg, err = b.SendWithRetry(c.Chat(), video, tele.ModeHTML)
+		if err != nil {
+			b.logger.Warn("failed to send collected video, falling back to text", "error", err)
+		}
+	}
+	if sentMsg == nil {
+		sentMsg, err = b.SendWithRetry(c.Chat(), html, tele.ModeHTML)
+		if err != nil {
+			return WrapUserError(MsgFailedSendCollected, err)
+		}
 	}
 
 	// Store done message ID and start time
