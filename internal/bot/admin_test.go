@@ -5,39 +5,9 @@ import (
 	"testing"
 
 	tele "gopkg.in/telebot.v4"
+
+	"nuclight.org/consigliere/internal/poll"
 )
-
-// botInterface wraps the methods we need from telebot.Bot for testing
-type botInterface interface {
-	ChatMemberOf(*tele.Chat, *tele.User) (*tele.ChatMember, error)
-}
-
-// mockBot implements botInterface for testing
-type mockBot struct {
-	chatMemberFunc func(*tele.Chat, *tele.User) (*tele.ChatMember, error)
-}
-
-func (m *mockBot) ChatMemberOf(chat *tele.Chat, user *tele.User) (*tele.ChatMember, error) {
-	if m.chatMemberFunc != nil {
-		return m.chatMemberFunc(chat, user)
-	}
-	return nil, errors.New("not implemented")
-}
-
-// testBot wraps Bot to allow injecting mock for testing
-type testBot struct {
-	botAPI botInterface
-}
-
-func (tb *testBot) isAdmin(chatID int64, userID int64) (bool, error) {
-	chat := &tele.Chat{ID: chatID}
-	member, err := tb.botAPI.ChatMemberOf(chat, &tele.User{ID: userID})
-	if err != nil {
-		return false, err
-	}
-
-	return member.Role == tele.Administrator || member.Role == tele.Creator, nil
-}
 
 // mockContext implements the minimum interface needed for middleware testing
 type mockContext struct {
@@ -60,151 +30,92 @@ func (m *mockContext) Delete() error {
 	return m.deleteErr
 }
 
-func TestBot_isAdmin_Administrator(t *testing.T) {
-	mb := &mockBot{
-		chatMemberFunc: func(chat *tele.Chat, user *tele.User) (*tele.ChatMember, error) {
-			return &tele.ChatMember{
-				Role: tele.Administrator,
-			}, nil
-		},
+// isInAdminList checks if a user ID is in the club admin list.
+// This mirrors the logic in ClubAdminOnly middleware.
+func isInAdminList(admins []int64, userID int64) bool {
+	for _, adminID := range admins {
+		if adminID == userID {
+			return true
+		}
+	}
+	return false
+}
+
+func TestClubAdminList_AllowsAdmin(t *testing.T) {
+	config := &ClubConfig{
+		Club:   poll.ClubVanmo,
+		Admins: []int64{100, 101, 102},
 	}
 
-	tb := &testBot{botAPI: mb}
-
-	isAdmin, err := tb.isAdmin(123, 456)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
+	if !isInAdminList(config.Admins, 100) {
+		t.Error("expected user 100 to be admin")
 	}
-	if !isAdmin {
-		t.Error("expected isAdmin to be true for administrator role")
+	if !isInAdminList(config.Admins, 101) {
+		t.Error("expected user 101 to be admin")
+	}
+	if !isInAdminList(config.Admins, 102) {
+		t.Error("expected user 102 to be admin")
 	}
 }
 
-func TestBot_isAdmin_Creator(t *testing.T) {
-	mb := &mockBot{
-		chatMemberFunc: func(chat *tele.Chat, user *tele.User) (*tele.ChatMember, error) {
-			return &tele.ChatMember{
-				Role: tele.Creator,
-			}, nil
-		},
+func TestClubAdminList_RejectsNonAdmin(t *testing.T) {
+	config := &ClubConfig{
+		Club:   poll.ClubVanmo,
+		Admins: []int64{100, 101, 102},
 	}
 
-	tb := &testBot{botAPI: mb}
-
-	isAdmin, err := tb.isAdmin(123, 456)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
+	if isInAdminList(config.Admins, 999) {
+		t.Error("expected user 999 to not be admin")
 	}
-	if !isAdmin {
-		t.Error("expected isAdmin to be true for creator role")
+	if isInAdminList(config.Admins, 0) {
+		t.Error("expected user 0 to not be admin")
 	}
 }
 
-func TestBot_isAdmin_RegularMember(t *testing.T) {
-	mb := &mockBot{
-		chatMemberFunc: func(chat *tele.Chat, user *tele.User) (*tele.ChatMember, error) {
-			return &tele.ChatMember{
-				Role: tele.Member,
-			}, nil
-		},
+func TestClubAdminList_EmptyAdminList(t *testing.T) {
+	config := &ClubConfig{
+		Club:   poll.ClubVanmo,
+		Admins: []int64{},
 	}
 
-	tb := &testBot{botAPI: mb}
-
-	isAdmin, err := tb.isAdmin(123, 456)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if isAdmin {
-		t.Error("expected isAdmin to be false for regular member role")
+	if isInAdminList(config.Admins, 100) {
+		t.Error("expected no one to be admin with empty list")
 	}
 }
 
-func TestBot_isAdmin_Error(t *testing.T) {
-	expectedErr := errors.New("API error")
-	mb := &mockBot{
-		chatMemberFunc: func(chat *tele.Chat, user *tele.User) (*tele.ChatMember, error) {
-			return nil, expectedErr
-		},
+func TestChatRegistry_KnownChat(t *testing.T) {
+	// Test that known chat IDs resolve to the correct config
+	config, ok := chatRegistry[-10]
+	if !ok {
+		t.Fatal("expected chat -10 to be in registry")
+	}
+	if config.Club != poll.ClubVanmo {
+		t.Errorf("expected club %s, got %s", poll.ClubVanmo, config.Club)
 	}
 
-	tb := &testBot{botAPI: mb}
-
-	isAdmin, err := tb.isAdmin(123, 456)
-	if err == nil {
-		t.Fatal("expected error, got nil")
+	config, ok = chatRegistry[-30]
+	if !ok {
+		t.Fatal("expected chat -30 to be in registry")
 	}
-	if isAdmin {
-		t.Error("expected isAdmin to be false when error occurs")
-	}
-}
-
-func TestBot_AdminOnly_PassesForAdmin(t *testing.T) {
-	// Test the middleware behavior logic for admins
-	mb := &mockBot{
-		chatMemberFunc: func(chat *tele.Chat, user *tele.User) (*tele.ChatMember, error) {
-			return &tele.ChatMember{
-				Role: tele.Administrator,
-			}, nil
-		},
-	}
-
-	tb := &testBot{botAPI: mb}
-	ctx := &mockContext{chatID: 123, userID: 456}
-
-	// Test the isAdmin check that middleware would perform
-	isAdmin, err := tb.isAdmin(ctx.Chat().ID, ctx.Sender().ID)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !isAdmin {
-		t.Error("expected isAdmin to be true, middleware would call next handler")
+	if config.Club != poll.ClubTbilissimo {
+		t.Errorf("expected club %s, got %s", poll.ClubTbilissimo, config.Club)
 	}
 }
 
-func TestBot_AdminOnly_RejectsNonAdmin(t *testing.T) {
-	// Test the middleware behavior logic for non-admins
-	mb := &mockBot{
-		chatMemberFunc: func(chat *tele.Chat, user *tele.User) (*tele.ChatMember, error) {
-			return &tele.ChatMember{
-				Role: tele.Member,
-			}, nil
-		},
-	}
-
-	tb := &testBot{botAPI: mb}
-	ctx := &mockContext{chatID: 123, userID: 456}
-
-	// Test the isAdmin check that middleware would perform
-	isAdmin, err := tb.isAdmin(ctx.Chat().ID, ctx.Sender().ID)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if isAdmin {
-		t.Error("expected isAdmin to be false, middleware would silently reject")
+func TestChatRegistry_UnknownChat(t *testing.T) {
+	_, ok := chatRegistry[-999]
+	if ok {
+		t.Error("expected chat -999 to not be in registry")
 	}
 }
 
-func TestBot_AdminOnly_PropagatesError(t *testing.T) {
-	// Test that errors from isAdmin would be propagated by middleware
-	expectedErr := errors.New("API error")
-	mb := &mockBot{
-		chatMemberFunc: func(chat *tele.Chat, user *tele.User) (*tele.ChatMember, error) {
-			return nil, expectedErr
-		},
+func TestChatRegistry_SharedConfig(t *testing.T) {
+	// Main and test chats for the same club should share the same config pointer
+	if chatRegistry[-10] != chatRegistry[-20] {
+		t.Error("expected vanmo main and test chats to share config")
 	}
-
-	tb := &testBot{botAPI: mb}
-	ctx := &mockContext{chatID: 123, userID: 456}
-
-	// Test that isAdmin returns error that middleware would propagate
-	_, err := tb.isAdmin(ctx.Chat().ID, ctx.Sender().ID)
-
-	if err == nil {
-		t.Fatal("expected error to be propagated, got nil")
-	}
-	if err != expectedErr {
-		t.Errorf("expected error %v, got %v", expectedErr, err)
+	if chatRegistry[-30] != chatRegistry[-40] {
+		t.Error("expected tbilissimo main and test chats to share config")
 	}
 }
 
