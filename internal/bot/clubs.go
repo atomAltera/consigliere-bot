@@ -9,6 +9,14 @@ import (
 	"nuclight.org/consigliere/internal/poll"
 )
 
+const UserSectris = 375533758
+const UserMamaLama = 319348068
+const UserKezlev = 7437375018
+const UserFrancuz = 1091792914
+
+const ChatVanmo = -1001857572582
+const ChatAntispamTest = -1002544962928
+
 // FeatureFlags holds per-club feature toggles.
 type FeatureFlags struct{}
 
@@ -27,29 +35,27 @@ var vanmoConfig = &ClubConfig{
 	Name:            "VANMO",
 	DefaultWeekDays: []time.Weekday{time.Monday, time.Saturday},
 	Admins: []int64{
-		// todo: replace with real admin user IDs
-		100,
-		101,
-		102,
+		UserSectris,
+		UserFrancuz,
 	},
 }
 
 var tbilissimoConfig = &ClubConfig{
 	Club:            poll.ClubTbilissimo,
 	Name:            "Tbilissimo",
-	DefaultWeekDays: []time.Weekday{time.Monday, time.Saturday},
+	DefaultWeekDays: []time.Weekday{time.Wednesday, time.Sunday},
 	Admins: []int64{
-		// todo: replace with real admin user IDs
-		200,
-		201,
+		UserSectris,
+		UserMamaLama,
+		UserKezlev,
 	},
 }
 
 // chatRegistry maps Telegram chat IDs to their club configuration.
 var chatRegistry = map[int64]*ClubConfig{
 	// todo: replace with real chat IDs
-	-10: vanmoConfig,         // vanmo main
-	-20: vanmoConfig,         // vanmo test
+	ChatVanmo: vanmoConfig,
+	ChatAntispamTest: vanmoConfig,
 	-30: tbilissimoConfig,    // tbilissimo main
 	-40: tbilissimoConfig,    // tbilissimo test
 }

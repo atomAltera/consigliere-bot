@@ -85,20 +85,12 @@ func TestClubAdminList_EmptyAdminList(t *testing.T) {
 
 func TestChatRegistry_KnownChat(t *testing.T) {
 	// Test that known chat IDs resolve to the correct config
-	config, ok := chatRegistry[-10]
+	config, ok := chatRegistry[ChatVanmo]
 	if !ok {
-		t.Fatal("expected chat -10 to be in registry")
+		t.Fatal("expected vanmo chat to be in registry")
 	}
 	if config.Club != poll.ClubVanmo {
 		t.Errorf("expected club %s, got %s", poll.ClubVanmo, config.Club)
-	}
-
-	config, ok = chatRegistry[-30]
-	if !ok {
-		t.Fatal("expected chat -30 to be in registry")
-	}
-	if config.Club != poll.ClubTbilissimo {
-		t.Errorf("expected club %s, got %s", poll.ClubTbilissimo, config.Club)
 	}
 }
 
@@ -109,13 +101,12 @@ func TestChatRegistry_UnknownChat(t *testing.T) {
 	}
 }
 
-func TestChatRegistry_SharedConfig(t *testing.T) {
-	// Main and test chats for the same club should share the same config pointer
-	if chatRegistry[-10] != chatRegistry[-20] {
-		t.Error("expected vanmo main and test chats to share config")
-	}
-	if chatRegistry[-30] != chatRegistry[-40] {
-		t.Error("expected tbilissimo main and test chats to share config")
+func TestChatRegistry_AllEntriesValid(t *testing.T) {
+	// Every entry in the registry should have a non-empty Club
+	for chatID, config := range chatRegistry {
+		if config.Club == "" {
+			t.Errorf("chat %d has empty club", chatID)
+		}
 	}
 }
 

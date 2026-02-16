@@ -1,1 +1,1 @@
-🎭 игры в JOIN BAR, {{. | ruDate}}
+🎭 игры в Biblioteka Lounge, {{. | ruDate}}

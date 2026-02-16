@@ -8,9 +8,9 @@ package bot
 func (b *Bot) RegisterCommands() {
 	adminGroup := b.bot.Group()
 	adminGroup.Use(b.HandleErrors())
-	adminGroup.Use(b.ResolveClub())
 	adminGroup.Use(b.RateLimit())
 	adminGroup.Use(b.DeleteCommand())
+	adminGroup.Use(b.ResolveClub())
 	adminGroup.Use(b.ClubAdminOnly())
 	adminGroup.Use(b.LogCommand())
 
