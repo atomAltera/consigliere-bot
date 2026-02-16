@@ -100,6 +100,5 @@ func (b *Bot) handleRefresh(c tele.Context) error {
 		return UserErrorf(MsgPollMessageMissing)
 	}
 
-	_, err = b.SendTemporary(c.Chat(), "Сообщения обновлены", 0)
-	return err
+	return nil
 }
