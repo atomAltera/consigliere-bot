@@ -13,7 +13,6 @@
 (пока никого)
 {{end}}
 {{- if .ComingLater}}
-
 <b>Будут позже:</b>
 {{range $i, $v := .ComingLater}}{{if $i}}, {{end}}{{$v.DisplayName}}{{end}}
 {{- end}}
