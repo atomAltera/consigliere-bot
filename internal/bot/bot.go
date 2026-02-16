@@ -63,6 +63,12 @@ func MessageRef(chatID int64, msgID int) *tele.Message {
 	}
 }
 
+// isNotModifiedErr returns true if the error indicates that the message
+// content is identical to the current content (nothing to update).
+func isNotModifiedErr(err error) bool {
+	return errors.Is(err, tele.ErrSameMessageContent) || errors.Is(err, tele.ErrMessageNotModified)
+}
+
 func (b *Bot) Bot() *tele.Bot {
 	return b.bot
 }
@@ -215,6 +221,9 @@ func (b *Bot) UpdateInvitationMessage(p *poll.Poll, isCancelledOverride *bool) b
 	}
 
 	if _, err = b.bot.Edit(MessageRef(p.TgChatID, p.TgInvitationMessageID), html, tele.ModeHTML); err != nil {
+		if isNotModifiedErr(err) {
+			return true
+		}
 		b.logger.Warn("failed to update invitation message", "error", err, "poll_id", p.ID)
 		return false
 	}
