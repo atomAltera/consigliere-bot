@@ -15,7 +15,9 @@ const UserKezlev = 7437375018
 const UserFrancuz = 1091792914
 
 const ChatVanmo = -1001857572582
+const ChatTbilissimo = -1001446847412
 const ChatAntispamTest = -1002544962928
+const ChatConsigliereTestTbilissimo = -1003733477508
 
 // FeatureFlags holds per-club feature toggles.
 type FeatureFlags struct{}
@@ -57,9 +59,9 @@ var tbilissimoConfig = &ClubConfig{
 var chatRegistry = map[int64]*ClubConfig{
 	// todo: replace with real chat IDs
 	ChatVanmo: vanmoConfig,
+	ChatTbilissimo: tbilissimoConfig,
 	ChatAntispamTest: vanmoConfig,
-	-30: tbilissimoConfig,    // tbilissimo main
-	-40: tbilissimoConfig,    // tbilissimo test
+	ChatConsigliereTestTbilissimo: tbilissimoConfig,
 }
 
 // InitClubTemplates parses templates for all club configs.
