@@ -5,6 +5,7 @@ import "time"
 type Poll struct {
 	ID                 int64
 	TgChatID           int64
+	Club               Club
 	TgPollID           string
 	TgMessageID        int
 	// TgInvitationMessageID stores the invitation message ID (the persistent message

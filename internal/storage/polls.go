@@ -46,9 +46,9 @@ func (r *PollRepository) Create(p *poll.Poll) error {
 		p.Options = poll.DefaultOptions()
 	}
 	result, err := r.db.db.Exec(`
-		INSERT INTO polls (tg_chat_id, tg_poll_id, tg_message_id, tg_invitation_message_id, tg_cancel_message_id, tg_done_message_id, start_time, event_date, options, is_active, is_pinned, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, p.TgChatID, p.TgPollID, p.TgMessageID, p.TgInvitationMessageID, p.TgCancelMessageID, p.TgDoneMessageID, p.StartTime, p.EventDate, optionsToString(p.Options), p.IsActive, p.IsPinned, time.Now())
+		INSERT INTO polls (tg_chat_id, club, tg_poll_id, tg_message_id, tg_invitation_message_id, tg_cancel_message_id, tg_done_message_id, start_time, event_date, options, is_active, is_pinned, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, p.TgChatID, string(p.Club), p.TgPollID, p.TgMessageID, p.TgInvitationMessageID, p.TgCancelMessageID, p.TgDoneMessageID, p.StartTime, p.EventDate, optionsToString(p.Options), p.IsActive, p.IsPinned, time.Now())
 	if err != nil {
 		return fmt.Errorf("insert poll: %w", err)
 	}
@@ -63,7 +63,7 @@ func (r *PollRepository) Create(p *poll.Poll) error {
 
 func (r *PollRepository) GetLatestActive(chatID int64) (*poll.Poll, error) {
 	row := r.db.db.QueryRow(`
-		SELECT id, tg_chat_id, tg_poll_id, tg_message_id, tg_invitation_message_id, tg_cancel_message_id, tg_done_message_id, start_time, event_date, options, is_active, is_pinned, created_at
+		SELECT id, tg_chat_id, club, tg_poll_id, tg_message_id, tg_invitation_message_id, tg_cancel_message_id, tg_done_message_id, start_time, event_date, options, is_active, is_pinned, created_at
 		FROM polls
 		WHERE tg_chat_id = ? AND is_active = 1
 		ORDER BY created_at DESC
@@ -75,7 +75,7 @@ func (r *PollRepository) GetLatestActive(chatID int64) (*poll.Poll, error) {
 
 func (r *PollRepository) GetByTgPollID(tgPollID string) (*poll.Poll, error) {
 	row := r.db.db.QueryRow(`
-		SELECT id, tg_chat_id, tg_poll_id, tg_message_id, tg_invitation_message_id, tg_cancel_message_id, tg_done_message_id, start_time, event_date, options, is_active, is_pinned, created_at
+		SELECT id, tg_chat_id, club, tg_poll_id, tg_message_id, tg_invitation_message_id, tg_cancel_message_id, tg_done_message_id, start_time, event_date, options, is_active, is_pinned, created_at
 		FROM polls
 		WHERE tg_poll_id = ?
 	`, tgPollID)
@@ -85,7 +85,7 @@ func (r *PollRepository) GetByTgPollID(tgPollID string) (*poll.Poll, error) {
 
 func (r *PollRepository) GetLatestCancelled(chatID int64) (*poll.Poll, error) {
 	row := r.db.db.QueryRow(`
-		SELECT id, tg_chat_id, tg_poll_id, tg_message_id, tg_invitation_message_id, tg_cancel_message_id, tg_done_message_id, start_time, event_date, options, is_active, is_pinned, created_at
+		SELECT id, tg_chat_id, club, tg_poll_id, tg_message_id, tg_invitation_message_id, tg_cancel_message_id, tg_done_message_id, start_time, event_date, options, is_active, is_pinned, created_at
 		FROM polls
 		WHERE tg_chat_id = ? AND is_active = 0
 		ORDER BY created_at DESC
@@ -97,7 +97,7 @@ func (r *PollRepository) GetLatestCancelled(chatID int64) (*poll.Poll, error) {
 
 func (r *PollRepository) GetLatest(chatID int64) (*poll.Poll, error) {
 	row := r.db.db.QueryRow(`
-		SELECT id, tg_chat_id, tg_poll_id, tg_message_id, tg_invitation_message_id, tg_cancel_message_id, tg_done_message_id, start_time, event_date, options, is_active, is_pinned, created_at
+		SELECT id, tg_chat_id, club, tg_poll_id, tg_message_id, tg_invitation_message_id, tg_cancel_message_id, tg_done_message_id, start_time, event_date, options, is_active, is_pinned, created_at
 		FROM polls
 		WHERE tg_chat_id = ?
 		ORDER BY created_at DESC
@@ -110,9 +110,9 @@ func (r *PollRepository) GetLatest(chatID int64) (*poll.Poll, error) {
 func (r *PollRepository) Update(p *poll.Poll) error {
 	_, err := r.db.db.Exec(`
 		UPDATE polls
-		SET tg_poll_id = ?, tg_message_id = ?, tg_invitation_message_id = ?, tg_cancel_message_id = ?, tg_done_message_id = ?, start_time = ?, options = ?, is_active = ?, is_pinned = ?
+		SET tg_poll_id = ?, tg_message_id = ?, tg_invitation_message_id = ?, tg_cancel_message_id = ?, tg_done_message_id = ?, start_time = ?, options = ?, is_active = ?, is_pinned = ?, club = ?
 		WHERE id = ?
-	`, p.TgPollID, p.TgMessageID, p.TgInvitationMessageID, p.TgCancelMessageID, p.TgDoneMessageID, p.StartTime, optionsToString(p.Options), p.IsActive, p.IsPinned, p.ID)
+	`, p.TgPollID, p.TgMessageID, p.TgInvitationMessageID, p.TgCancelMessageID, p.TgDoneMessageID, p.StartTime, optionsToString(p.Options), p.IsActive, p.IsPinned, string(p.Club), p.ID)
 	if err != nil {
 		return fmt.Errorf("update poll: %w", err)
 	}
@@ -121,12 +121,13 @@ func (r *PollRepository) Update(p *poll.Poll) error {
 
 func (r *PollRepository) scanPoll(row *sql.Row) (*poll.Poll, error) {
 	var p poll.Poll
+	var clubStr string
 	var tgPollID, startTime sql.NullString
 	var tgMessageID, tgInvitationMessageID, tgCancelMessageID, tgDoneMessageID sql.NullInt64
 	var optionsStr string
 
 	err := row.Scan(
-		&p.ID, &p.TgChatID, &tgPollID, &tgMessageID, &tgInvitationMessageID, &tgCancelMessageID, &tgDoneMessageID,
+		&p.ID, &p.TgChatID, &clubStr, &tgPollID, &tgMessageID, &tgInvitationMessageID, &tgCancelMessageID, &tgDoneMessageID,
 		&startTime, &p.EventDate, &optionsStr, &p.IsActive, &p.IsPinned, &p.CreatedAt,
 	)
 	if err == sql.ErrNoRows {
@@ -136,6 +137,7 @@ func (r *PollRepository) scanPoll(row *sql.Row) (*poll.Poll, error) {
 		return nil, err
 	}
 
+	p.Club = poll.Club(clubStr)
 	p.TgPollID = tgPollID.String
 	p.TgMessageID = int(tgMessageID.Int64)
 	p.TgInvitationMessageID = int(tgInvitationMessageID.Int64)

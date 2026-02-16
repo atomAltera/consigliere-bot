@@ -147,7 +147,7 @@ func TestService_CreatePoll(t *testing.T) {
 	nickRepo := &mockNicknameRepo{}
 	svc := NewService(pollRepo, voteRepo, nickRepo)
 
-	result, err := svc.CreatePoll(-123456, time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC))
+	result, err := svc.CreatePoll(-123456, time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC), ClubVanmo)
 	if err != nil {
 		t.Fatalf("CreatePoll failed: %v", err)
 	}
@@ -165,7 +165,7 @@ func TestService_GetInvitationData(t *testing.T) {
 	nickRepo := &mockNicknameRepo{}
 	svc := NewService(pollRepo, voteRepo, nickRepo)
 
-	result, _ := svc.CreatePoll(-123456, time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC))
+	result, _ := svc.CreatePoll(-123456, time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC), ClubVanmo)
 	p := result.Poll
 
 	// Add votes: 19:00, 20:00, 21:00+, decide later
@@ -202,7 +202,7 @@ func TestIntegration_PollVoteResultsFlow(t *testing.T) {
 	futureDate := time.Now().AddDate(0, 0, 7) // 1 week from now
 
 	// Step 1: Create poll
-	result, err := svc.CreatePoll(chatID, futureDate)
+	result, err := svc.CreatePoll(chatID, futureDate, ClubVanmo)
 	if err != nil {
 		t.Fatalf("CreatePoll failed: %v", err)
 	}
@@ -270,7 +270,7 @@ func TestIntegration_CancelRestoreFlow(t *testing.T) {
 	futureDate := time.Now().AddDate(0, 0, 7) // 1 week from now
 
 	// Step 1: Create poll
-	result, err := svc.CreatePoll(chatID, futureDate)
+	result, err := svc.CreatePoll(chatID, futureDate, ClubVanmo)
 	if err != nil {
 		t.Fatalf("CreatePoll failed: %v", err)
 	}
@@ -323,13 +323,13 @@ func TestIntegration_DuplicatePollPrevention(t *testing.T) {
 	futureDate := time.Now().AddDate(0, 0, 7)
 
 	// Create first poll
-	_, err := svc.CreatePoll(chatID, futureDate)
+	_, err := svc.CreatePoll(chatID, futureDate, ClubVanmo)
 	if err != nil {
 		t.Fatalf("First CreatePoll failed: %v", err)
 	}
 
 	// Try to create second poll - should fail
-	_, err = svc.CreatePoll(chatID, futureDate)
+	_, err = svc.CreatePoll(chatID, futureDate, ClubVanmo)
 	if err != ErrPollExists {
 		t.Errorf("expected ErrPollExists for duplicate poll, got %v", err)
 	}
@@ -345,7 +345,7 @@ func TestIntegration_GetVotes(t *testing.T) {
 	chatID := int64(-123456)
 	futureDate := time.Now().AddDate(0, 0, 7)
 
-	result, _ := svc.CreatePoll(chatID, futureDate)
+	result, _ := svc.CreatePoll(chatID, futureDate, ClubVanmo)
 	poll := result.Poll
 
 	now := time.Now()

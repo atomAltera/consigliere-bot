@@ -22,7 +22,8 @@ func (b *Bot) handlePoll(c tele.Context) error {
 	b.logger.Info("poll parameters", "event_date", eventDate.Format("2006-01-02"))
 
 	// Create poll in database (service checks for existing poll)
-	result, err := b.pollService.CreatePoll(c.Chat().ID, eventDate)
+	// TODO: pass club from ClubConfig once middleware is wired
+	result, err := b.pollService.CreatePoll(c.Chat().ID, eventDate, poll.ClubVanmo)
 	if err != nil {
 		if errors.Is(err, poll.ErrPollExists) {
 			return UserErrorf(MsgPollAlreadyExists)

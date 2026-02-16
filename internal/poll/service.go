@@ -83,7 +83,7 @@ func NewService(polls PollRepository, votes VoteRepository, nicknames NicknameRe
 // Returns ErrPollExists if an active poll already exists in this chat with a future event date.
 // If an active poll exists but its event date is in the past, it will be deactivated and
 // the new poll created. The replaced poll is returned in CreatePollResult.ReplacedPoll.
-func (s *Service) CreatePoll(tgChatID int64, eventDate time.Time) (*CreatePollResult, error) {
+func (s *Service) CreatePoll(tgChatID int64, eventDate time.Time, club Club) (*CreatePollResult, error) {
 	// Check if there's already an active poll
 	existing, err := s.polls.GetLatestActive(tgChatID)
 	if err != nil {
@@ -110,6 +110,7 @@ func (s *Service) CreatePoll(tgChatID int64, eventDate time.Time) (*CreatePollRe
 
 	p := &Poll{
 		TgChatID:  tgChatID,
+		Club:      club,
 		EventDate: eventDate,
 		Options:   DefaultOptions(),
 		IsActive:  true,

@@ -92,6 +92,9 @@ func (d *DB) Migrate() error {
 		`ALTER TABLE nicknames ADD COLUMN gender TEXT`,
 		// Add start_time column to polls for persisting /done start time
 		`ALTER TABLE polls ADD COLUMN start_time TEXT`,
+		// Add club column to polls for multi-club support
+		`ALTER TABLE polls ADD COLUMN club TEXT NOT NULL DEFAULT ''`,
+		`UPDATE polls SET club = 'vanmo' WHERE club = ''`,
 	}
 
 	_, err := d.db.Exec(schema)
