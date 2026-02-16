@@ -43,3 +43,7 @@ docker_push: docker_build
 .PHONY: pull_db
 pull_db:
 	scp nuclight.org:consigliere-tg-bot/db/consigliere.sqlite ./db/consigliere.sqlite
+
+.PHONY: push_db
+push_db:
+	scp ./db/consigliere.sqlite nuclight.org:consigliere-tg-bot/db/consigliere.sqlite
