@@ -3,6 +3,7 @@ package bot
 import (
 	"errors"
 	"fmt"
+	"html/template"
 	"strings"
 
 	tele "gopkg.in/telebot.v4"
@@ -93,7 +94,7 @@ func (b *Bot) handleNick(c tele.Context) error {
 }
 
 // RenderInvitationMessageWithNicks renders invitation with nicknames resolved.
-func (b *Bot) RenderInvitationMessageWithNicks(data *poll.InvitationData) (string, error) {
+func (b *Bot) RenderInvitationMessageWithNicks(tmpl *template.Template, data *poll.InvitationData) (string, error) {
 	// Build a single cache for all vote lists (more efficient than 3 separate caches)
 	cache, err := b.buildNicknameCacheFromVotes(data.Participants, data.ComingLater, data.Undecided)
 	if err != nil {
@@ -106,5 +107,5 @@ func (b *Bot) RenderInvitationMessageWithNicks(data *poll.InvitationData) (strin
 	b.enrichVotesWithCache(data.ComingLater, cache)
 	b.enrichVotesWithCache(data.Undecided, cache)
 
-	return RenderInvitationMessage(data)
+	return RenderInvitationMessage(tmpl, data)
 }

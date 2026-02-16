@@ -5,6 +5,7 @@ import (
 	"embed"
 	"fmt"
 	"html/template"
+	"io/fs"
 	"strings"
 	"time"
 
@@ -15,15 +16,7 @@ import (
 const TelegramMaxMessageLength = 4096
 
 //go:embed templates/*
-var templates embed.FS
-
-var invitationTmpl *template.Template
-var pollTitleTmpl *template.Template
-var cancelTmpl *template.Template
-var restoreTmpl *template.Template
-var callTmpl *template.Template
-var collectedTmpl *template.Template
-var resultsTmpl *template.Template
+var templateFS embed.FS
 
 // Russian weekday names
 var russianWeekdays = []string{
@@ -174,44 +167,24 @@ var templateFuncs = template.FuncMap{
 	"formatResultsVoter":     formatResultsVoter,
 }
 
-// InitTemplates initializes all templates. Must be called before using any Render* functions.
-func InitTemplates() error {
-	var err error
-	invitationTmpl, err = template.New("invitation.html").Funcs(templateFuncs).ParseFS(templates, "templates/invitation.html")
+// ParseClubTemplates parses all templates for a club from the embedded FS.
+// The subdir should be the club directory name under templates/ (e.g., "vanmo").
+func ParseClubTemplates(subdir string) (*template.Template, error) {
+	clubFS, err := fs.Sub(templateFS, "templates/"+subdir)
 	if err != nil {
-		return fmt.Errorf("parse invitation template: %w", err)
+		return nil, fmt.Errorf("get club template FS %s: %w", subdir, err)
 	}
-	pollTitleTmpl, err = template.New("poll_title.txt").Funcs(templateFuncs).ParseFS(templates, "templates/poll_title.txt")
+	tmpl, err := template.New("").Funcs(templateFuncs).ParseFS(clubFS, "*.html", "*.txt")
 	if err != nil {
-		return fmt.Errorf("parse poll title template: %w", err)
+		return nil, fmt.Errorf("parse club templates %s: %w", subdir, err)
 	}
-	cancelTmpl, err = template.New("cancel.html").Funcs(templateFuncs).ParseFS(templates, "templates/cancel.html")
-	if err != nil {
-		return fmt.Errorf("parse cancel template: %w", err)
-	}
-	restoreTmpl, err = template.New("restore.html").Funcs(templateFuncs).ParseFS(templates, "templates/restore.html")
-	if err != nil {
-		return fmt.Errorf("parse restore template: %w", err)
-	}
-	callTmpl, err = template.New("call.html").Funcs(templateFuncs).ParseFS(templates, "templates/call.html")
-	if err != nil {
-		return fmt.Errorf("parse call template: %w", err)
-	}
-	collectedTmpl, err = template.New("collected.html").Funcs(templateFuncs).ParseFS(templates, "templates/collected.html")
-	if err != nil {
-		return fmt.Errorf("parse collected template: %w", err)
-	}
-	resultsTmpl, err = template.New("results.html").Funcs(templateFuncs).ParseFS(templates, "templates/results.html")
-	if err != nil {
-		return fmt.Errorf("parse results template: %w", err)
-	}
-	return nil
+	return tmpl, nil
 }
 
 // RenderPollTitleMessage renders the poll title for the given event date.
-func RenderPollTitleMessage(eventDate time.Time) (string, error) {
+func RenderPollTitleMessage(tmpl *template.Template, eventDate time.Time) (string, error) {
 	var buf bytes.Buffer
-	if err := pollTitleTmpl.Execute(&buf, eventDate); err != nil {
+	if err := tmpl.ExecuteTemplate(&buf, "poll_title.txt", eventDate); err != nil {
 		return "", err
 	}
 	return buf.String(), nil
@@ -219,9 +192,9 @@ func RenderPollTitleMessage(eventDate time.Time) (string, error) {
 
 // RenderInvitationMessage renders the invitation message for the given data.
 // If the message exceeds Telegram's limit, participant lists are truncated.
-func RenderInvitationMessage(data *poll.InvitationData) (string, error) {
+func RenderInvitationMessage(tmpl *template.Template, data *poll.InvitationData) (string, error) {
 	var buf bytes.Buffer
-	if err := invitationTmpl.Execute(&buf, data); err != nil {
+	if err := tmpl.ExecuteTemplate(&buf, "invitation.html", data); err != nil {
 		return "", err
 	}
 
@@ -270,7 +243,7 @@ func RenderInvitationMessage(data *poll.InvitationData) (string, error) {
 
 		// Re-render
 		buf.Reset()
-		if err := invitationTmpl.Execute(&buf, truncatedData); err != nil {
+		if err := tmpl.ExecuteTemplate(&buf, "invitation.html", truncatedData); err != nil {
 			return "", err
 		}
 		result = buf.String()
@@ -286,9 +259,9 @@ type CancelData struct {
 }
 
 // RenderCancelMessage renders the cancellation notification message.
-func RenderCancelMessage(data *CancelData) (string, error) {
+func RenderCancelMessage(tmpl *template.Template, data *CancelData) (string, error) {
 	var buf bytes.Buffer
-	if err := cancelTmpl.Execute(&buf, data); err != nil {
+	if err := tmpl.ExecuteTemplate(&buf, "cancel.html", data); err != nil {
 		return "", err
 	}
 	return buf.String(), nil
@@ -301,9 +274,9 @@ type RestoreData struct {
 }
 
 // RenderRestoreMessage renders the restore notification message.
-func RenderRestoreMessage(data *RestoreData) (string, error) {
+func RenderRestoreMessage(tmpl *template.Template, data *RestoreData) (string, error) {
 	var buf bytes.Buffer
-	if err := restoreTmpl.Execute(&buf, data); err != nil {
+	if err := tmpl.ExecuteTemplate(&buf, "restore.html", data); err != nil {
 		return "", err
 	}
 	return buf.String(), nil
@@ -316,21 +289,21 @@ type CallData struct {
 }
 
 // RenderCallMessage renders the call message for undecided voters.
-func RenderCallMessage(data *CallData) (string, error) {
+func RenderCallMessage(tmpl *template.Template, data *CallData) (string, error) {
 	var buf bytes.Buffer
-	if err := callTmpl.Execute(&buf, data); err != nil {
+	if err := tmpl.ExecuteTemplate(&buf, "call.html", data); err != nil {
 		return "", err
 	}
 	return buf.String(), nil
 }
 
 // HelpMessage returns the help message HTML.
-func HelpMessage() (string, error) {
-	content, err := templates.ReadFile("templates/help.html")
-	if err != nil {
+func HelpMessage(tmpl *template.Template) (string, error) {
+	var buf bytes.Buffer
+	if err := tmpl.ExecuteTemplate(&buf, "help.html", nil); err != nil {
 		return "", err
 	}
-	return string(content), nil
+	return buf.String(), nil
 }
 
 // CollectedData holds data for the collected message template
@@ -342,9 +315,9 @@ type CollectedData struct {
 }
 
 // RenderCollectedMessage renders the "players collected" notification message.
-func RenderCollectedMessage(data *CollectedData) (string, error) {
+func RenderCollectedMessage(tmpl *template.Template, data *CollectedData) (string, error) {
 	var buf bytes.Buffer
-	if err := collectedTmpl.Execute(&buf, data); err != nil {
+	if err := tmpl.ExecuteTemplate(&buf, "collected.html", data); err != nil {
 		return "", err
 	}
 	return buf.String(), nil
@@ -368,9 +341,9 @@ type ResultsData struct {
 }
 
 // RenderResultsMessage renders the admin results message.
-func RenderResultsMessage(data *ResultsData) (string, error) {
+func RenderResultsMessage(tmpl *template.Template, data *ResultsData) (string, error) {
 	var buf bytes.Buffer
-	if err := resultsTmpl.Execute(&buf, data); err != nil {
+	if err := tmpl.ExecuteTemplate(&buf, "results.html", data); err != nil {
 		return "", err
 	}
 	return buf.String(), nil

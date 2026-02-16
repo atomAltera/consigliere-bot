@@ -6,6 +6,8 @@ import (
 
 // handleCall sends a message mentioning all undecided voters
 func (b *Bot) handleCall(c tele.Context) error {
+	config := getClubConfig(c)
+
 	// Get active poll (validates event date hasn't passed)
 	p, err := b.GetActivePollForAction(c.Chat().ID)
 	if err != nil {
@@ -24,7 +26,7 @@ func (b *Bot) handleCall(c tele.Context) error {
 
 	// Render and send call message
 	_, err = b.RenderAndSend(c, func() (string, error) {
-		return RenderCallMessage(&CallData{
+		return RenderCallMessage(config.templates, &CallData{
 			EventDate: p.EventDate,
 			Members:   MembersFromVotes(votes),
 		})

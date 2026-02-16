@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"html/template"
 	"os"
 	"strings"
 	"testing"
@@ -9,10 +10,14 @@ import (
 	"nuclight.org/consigliere/internal/poll"
 )
 
+var testTemplates *template.Template
+
 func TestMain(m *testing.M) {
 	// Initialize templates before running tests
-	if err := InitTemplates(); err != nil {
-		panic("failed to init templates: " + err.Error())
+	var err error
+	testTemplates, err = ParseClubTemplates("vanmo")
+	if err != nil {
+		panic("failed to parse club templates: " + err.Error())
 	}
 	os.Exit(m.Run())
 }
@@ -21,7 +26,7 @@ func TestRenderPollTitleMessage(t *testing.T) {
 	t.Run("renders Monday date in Russian", func(t *testing.T) {
 		// Monday, 15 January 2024
 		eventDate := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
-		result, err := RenderPollTitleMessage(eventDate)
+		result, err := RenderPollTitleMessage(testTemplates, eventDate)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -44,7 +49,7 @@ func TestRenderPollTitleMessage(t *testing.T) {
 	t.Run("renders Saturday date in Russian", func(t *testing.T) {
 		// Saturday, 20 January 2024
 		eventDate := time.Date(2024, 1, 20, 0, 0, 0, 0, time.UTC)
-		result, err := RenderPollTitleMessage(eventDate)
+		result, err := RenderPollTitleMessage(testTemplates, eventDate)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -69,7 +74,7 @@ func TestRenderInvitationMessage(t *testing.T) {
 			IsCancelled:  false,
 		}
 
-		result, err := RenderInvitationMessage(data)
+		result, err := RenderInvitationMessage(testTemplates, data)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -104,7 +109,7 @@ func TestRenderInvitationMessage(t *testing.T) {
 			IsCancelled: false,
 		}
 
-		result, err := RenderInvitationMessage(data)
+		result, err := RenderInvitationMessage(testTemplates, data)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -142,7 +147,7 @@ func TestRenderInvitationMessage(t *testing.T) {
 			IsCancelled: false,
 		}
 
-		result, err := RenderInvitationMessage(data)
+		result, err := RenderInvitationMessage(testTemplates, data)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -170,7 +175,7 @@ func TestRenderInvitationMessage(t *testing.T) {
 			IsCancelled: false,
 		}
 
-		result, err := RenderInvitationMessage(data)
+		result, err := RenderInvitationMessage(testTemplates, data)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -193,7 +198,7 @@ func TestRenderInvitationMessage(t *testing.T) {
 			IsCancelled:  true,
 		}
 
-		result, err := RenderInvitationMessage(data)
+		result, err := RenderInvitationMessage(testTemplates, data)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -218,7 +223,7 @@ func TestRenderInvitationMessage(t *testing.T) {
 			IsCancelled: false,
 		}
 
-		result, err := RenderInvitationMessage(data)
+		result, err := RenderInvitationMessage(testTemplates, data)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

@@ -79,6 +79,8 @@ func parseStartTime(arg string) (string, error) {
 
 // handleDone announces that enough players have been collected for the game
 func (b *Bot) handleDone(c tele.Context) error {
+	config := getClubConfig(c)
+
 	// Parse optional start time argument
 	var overrideTime string
 	if args := c.Args(); len(args) > 0 {
@@ -146,7 +148,7 @@ func (b *Bot) handleDone(c tele.Context) error {
 
 	// Render and send collected message
 	sentMsg, err := b.RenderAndSend(c, func() (string, error) {
-		return RenderCollectedMessage(&CollectedData{
+		return RenderCollectedMessage(config.templates, &CollectedData{
 			EventDate:   p.EventDate,
 			StartTime:   startTime,
 			Members:     members,

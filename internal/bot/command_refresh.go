@@ -11,6 +11,8 @@ import (
 // handleRefresh re-renders and updates invitation, done, and cancel messages
 // for the latest poll in this chat, regardless of whether it's active or past.
 func (b *Bot) handleRefresh(c tele.Context) error {
+	config := getClubConfig(c)
+
 	// Get latest poll (regardless of status)
 	p, err := b.pollService.GetLatestPoll(c.Chat().ID)
 	if err != nil {
@@ -60,7 +62,7 @@ func (b *Bot) handleRefresh(c tele.Context) error {
 				b.logger.Warn("failed to build nickname cache for refresh", "error", cacheErr)
 			}
 
-			html, err := RenderCollectedMessage(&CollectedData{
+			html, err := RenderCollectedMessage(config.templates, &CollectedData{
 				EventDate:   p.EventDate,
 				StartTime:   startTime,
 				Members:     b.membersFromVotesWithCache(mainVoters, cache),
@@ -89,7 +91,7 @@ func (b *Bot) handleRefresh(c tele.Context) error {
 				Members:   MembersFromVotes(votes),
 			}
 
-			html, err := RenderCancelMessage(cancelData)
+			html, err := RenderCancelMessage(config.templates, cancelData)
 			if err != nil {
 				b.logger.Warn("failed to render cancel message for refresh", "error", err)
 			} else {

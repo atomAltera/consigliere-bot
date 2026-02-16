@@ -10,6 +10,8 @@ import (
 
 // handleRestore restores the last cancelled poll if it's for today or a future date
 func (b *Bot) handleRestore(c tele.Context) error {
+	config := getClubConfig(c)
+
 	// Restore poll via service (validates date, marks as active)
 	p, err := b.pollService.RestorePoll(c.Chat().ID)
 	if err != nil {
@@ -42,7 +44,7 @@ func (b *Bot) handleRestore(c tele.Context) error {
 
 	// Render and send restore message
 	_, err = b.RenderAndSend(c, func() (string, error) {
-		return RenderRestoreMessage(&RestoreData{
+		return RenderRestoreMessage(config.templates, &RestoreData{
 			EventDate: p.EventDate,
 			Members:   MembersFromVotes(votes),
 		})

@@ -14,16 +14,17 @@ import (
 // - Day name: monday, mon, saturday, sat, etc.
 // - Explicit date: YYYY-MM-DD
 func (b *Bot) handlePoll(c tele.Context) error {
+	config := getClubConfig(c)
+
 	eventDate, err := parseEventDate(c.Args())
 	if err != nil {
 		return UserErrorf(MsgInvalidDateFormat)
 	}
 
-	b.logger.Info("poll parameters", "event_date", eventDate.Format("2006-01-02"))
+	b.logger.Info("poll parameters", "event_date", eventDate.Format("2006-01-02"), "club", config.Club)
 
 	// Create poll in database (service checks for existing poll)
-	// TODO: pass club from ClubConfig once middleware is wired
-	result, err := b.pollService.CreatePoll(c.Chat().ID, eventDate, poll.ClubVanmo)
+	result, err := b.pollService.CreatePoll(c.Chat().ID, eventDate, config.Club)
 	if err != nil {
 		if errors.Is(err, poll.ErrPollExists) {
 			return UserErrorf(MsgPollAlreadyExists)
@@ -58,7 +59,7 @@ func (b *Bot) handlePoll(c tele.Context) error {
 		IsCancelled:  false,
 	}
 
-	invitationHTML, err := RenderInvitationMessage(invitationData)
+	invitationHTML, err := RenderInvitationMessage(config.templates, invitationData)
 	if err != nil {
 		rollbackPoll()
 		return WrapUserError(MsgFailedRenderResults, err)
@@ -76,7 +77,7 @@ func (b *Bot) handlePoll(c tele.Context) error {
 	p.TgInvitationMessageID = invitationMsg.ID
 
 	// Render poll title from template
-	pollTitle, err := RenderPollTitleMessage(eventDate)
+	pollTitle, err := RenderPollTitleMessage(config.templates, eventDate)
 	if err != nil {
 		// Clean up invitation message and rollback poll on failure
 		_ = b.bot.Delete(invitationMsg)

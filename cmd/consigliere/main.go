@@ -82,7 +82,7 @@ func main() {
 	appLog.Info("database initialized")
 
 	// Initialize templates
-	if err := bot.InitTemplates(); err != nil {
+	if err := bot.InitClubTemplates(); err != nil {
 		appLog.Error("failed to initialize templates", "error", err)
 		os.Exit(1)
 	}

@@ -214,7 +214,13 @@ func (b *Bot) UpdateInvitationMessage(p *poll.Poll, isCancelledOverride *bool) b
 		results.IsCancelled = *isCancelledOverride
 	}
 
-	html, err := b.RenderInvitationMessageWithNicks(results)
+	clubConfig := chatRegistry[p.TgChatID]
+	if clubConfig == nil {
+		b.logger.Warn("no club config for chat, skipping invitation update", "chat_id", p.TgChatID)
+		return false
+	}
+
+	html, err := b.RenderInvitationMessageWithNicks(clubConfig.templates, results)
 	if err != nil {
 		b.logger.Warn("failed to render invitation", "error", err, "poll_id", p.ID)
 		return false

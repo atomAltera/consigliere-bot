@@ -10,6 +10,8 @@ import (
 
 // handleCancel cancels the event and updates the invitation message with cancellation footer
 func (b *Bot) handleCancel(c tele.Context) error {
+	config := getClubConfig(c)
+
 	// Get active poll (validates event date hasn't passed)
 	p, err := b.GetActivePollForAction(c.Chat().ID)
 	if err != nil {
@@ -48,7 +50,7 @@ func (b *Bot) handleCancel(c tele.Context) error {
 	}
 
 	sentMsg, err := b.RenderAndSend(c, func() (string, error) {
-		return RenderCancelMessage(cancelData)
+		return RenderCancelMessage(config.templates, cancelData)
 	}, MsgFailedRenderCancellation, MsgFailedSendCancellation)
 	if err != nil {
 		return err

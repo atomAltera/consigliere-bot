@@ -9,7 +9,9 @@ import (
 
 // handleHelp shows the help message with all available commands
 func (b *Bot) handleHelp(c tele.Context) error {
-	helpText, err := HelpMessage()
+	config := getClubConfig(c)
+
+	helpText, err := HelpMessage(config.templates)
 	if err != nil {
 		return fmt.Errorf("read help template: %w", err)
 	}

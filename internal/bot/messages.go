@@ -1,5 +1,10 @@
 package bot
 
+// Permission messages
+const (
+	MsgChatNotPermitted = "Этот чат не зарегистрирован для использования бота"
+)
+
 // User error messages (user mistakes, shown directly)
 const (
 	MsgInvalidDateFormat  = "Неверный формат даты. Используйте название дня (например, понедельник, сб) или ГГГГ-ММ-ДД"

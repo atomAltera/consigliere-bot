@@ -58,37 +58,6 @@ func (b *Bot) RateLimit() tele.MiddlewareFunc {
 	}
 }
 
-func (b *Bot) isAdmin(chatID int64, userID int64) (bool, error) {
-	member, err := b.bot.ChatMemberOf(MessageRef(chatID, 0).Chat, &tele.User{ID: userID})
-	if err != nil {
-		return false, err
-	}
-
-	return member.Role == tele.Administrator || member.Role == tele.Creator, nil
-}
-
-func (b *Bot) AdminOnly() tele.MiddlewareFunc {
-	return func(next tele.HandlerFunc) tele.HandlerFunc {
-		return func(c tele.Context) error {
-			isAdmin, err := b.isAdmin(c.Chat().ID, c.Sender().ID)
-			if err != nil {
-				return err
-			}
-
-			if !isAdmin {
-				b.logger.Info("unauthorized command attempt",
-					"user_id", c.Sender().ID,
-					"username", c.Sender().Username,
-					"chat_id", c.Chat().ID,
-					"command", c.Text(),
-				)
-				return nil // Ignore non-admin commands
-			}
-
-			return next(c)
-		}
-	}
-}
 
 func (b *Bot) DeleteCommand() tele.MiddlewareFunc {
 	return func(next tele.HandlerFunc) tele.HandlerFunc {
