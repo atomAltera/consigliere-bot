@@ -97,9 +97,9 @@ func TestNearestGameDay(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := nearestGameDay(tt.from)
+			result := nearestGameDay(tt.from, []time.Weekday{time.Monday, time.Saturday})
 			if !result.Equal(tt.expected) {
-				t.Errorf("nearestGameDay(%v) = %v, want %v",
+				t.Errorf("nearestGameDay(%v, [Mon, Sat]) = %v, want %v",
 					tt.from.Format("2006-01-02 Monday"), result.Format("2006-01-02 Monday"), tt.expected.Format("2006-01-02 Monday"))
 			}
 		})
@@ -107,7 +107,8 @@ func TestNearestGameDay(t *testing.T) {
 }
 
 func TestParseEventDate_ExplicitDate(t *testing.T) {
-	date, err := parseEventDate([]string{"2024-03-15"})
+	defaultDays := []time.Weekday{time.Monday, time.Saturday}
+	date, err := parseEventDate([]string{"2024-03-15"}, defaultDays)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -118,7 +119,8 @@ func TestParseEventDate_ExplicitDate(t *testing.T) {
 }
 
 func TestParseEventDate_InvalidDate(t *testing.T) {
-	_, err := parseEventDate([]string{"invalid"})
+	defaultDays := []time.Weekday{time.Monday, time.Saturday}
+	_, err := parseEventDate([]string{"invalid"}, defaultDays)
 	if err == nil {
 		t.Error("expected error for invalid date, got nil")
 	}
@@ -126,9 +128,10 @@ func TestParseEventDate_InvalidDate(t *testing.T) {
 
 func TestParseEventDate_DayOfWeek(t *testing.T) {
 	// Test that day names are recognized
+	defaultDays := []time.Weekday{time.Monday, time.Saturday}
 	dayNames := []string{"monday", "mon", "Mon", "MONDAY", "saturday", "sat", "Sat"}
 	for _, name := range dayNames {
-		_, err := parseEventDate([]string{name})
+		_, err := parseEventDate([]string{name}, defaultDays)
 		if err != nil {
 			t.Errorf("parseEventDate([%q]) unexpected error: %v", name, err)
 		}

@@ -51,17 +51,21 @@ func nextWeekday(from time.Time, target time.Weekday) time.Time {
 	return from.AddDate(0, 0, daysUntil)
 }
 
-// nearestGameDay returns the nearest Monday or Saturday from the given date.
-// If today is Monday or Saturday, returns today.
-func nearestGameDay(from time.Time) time.Time {
-	nextMon := nextWeekday(from, time.Monday)
-	nextSat := nextWeekday(from, time.Saturday)
-
-	// Return whichever is closer
-	if nextMon.Before(nextSat) || nextMon.Equal(nextSat) {
-		return nextMon
+// nearestGameDay returns the nearest game day from the given date,
+// choosing the closest upcoming day from the provided weekdays list.
+func nearestGameDay(from time.Time, weekdays []time.Weekday) time.Time {
+	if len(weekdays) == 0 {
+		return from
 	}
-	return nextSat
+
+	nearest := nextWeekday(from, weekdays[0])
+	for _, wd := range weekdays[1:] {
+		candidate := nextWeekday(from, wd)
+		if candidate.Before(nearest) {
+			nearest = candidate
+		}
+	}
+	return nearest
 }
 
 // isPollDatePassed checks if the poll's event date is before today.
@@ -78,12 +82,12 @@ func isPollDatePassed(eventDate time.Time) bool {
 // - No arguments: nearest Monday or Saturday
 // - Day of week name: "monday", "mon", "saturday", "sat", etc.
 // - Explicit date: "YYYY-MM-DD"
-func parseEventDate(args []string) (time.Time, error) {
+func parseEventDate(args []string, defaultWeekDays []time.Weekday) (time.Time, error) {
 	now := time.Now()
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 
 	if len(args) == 0 {
-		return nearestGameDay(today), nil
+		return nearestGameDay(today, defaultWeekDays), nil
 	}
 
 	arg := strings.ToLower(strings.TrimSpace(args[0]))

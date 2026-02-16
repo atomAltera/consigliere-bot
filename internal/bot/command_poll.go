@@ -16,7 +16,7 @@ import (
 func (b *Bot) handlePoll(c tele.Context) error {
 	config := getClubConfig(c)
 
-	eventDate, err := parseEventDate(c.Args())
+	eventDate, err := parseEventDate(c.Args(), config.DefaultWeekDays)
 	if err != nil {
 		return UserErrorf(MsgInvalidDateFormat)
 	}
