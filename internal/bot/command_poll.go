@@ -10,7 +10,7 @@ import (
 
 // handlePoll creates a new poll for the specified date
 // Usage: /poll [day|YYYY-MM-DD]
-// - No arguments: nearest Monday or Saturday
+// - No arguments: nearest club day
 // - Day name: monday, mon, saturday, sat, etc.
 // - Explicit date: YYYY-MM-DD
 func (b *Bot) handlePoll(c tele.Context) error {

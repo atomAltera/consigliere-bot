@@ -19,6 +19,8 @@ import (
 //	/nick @username gamenick м — with gender (м/ж/m/f/д)
 //	/nick 123456 gamenick   — link by telegram user ID
 func (b *Bot) handleNick(c tele.Context) error {
+	config := getClubConfig(c)
+
 	// Join all args back together to parse with our custom parser
 	// that handles quotes properly
 	input := strings.Join(c.Args(), " ")
@@ -70,11 +72,12 @@ func (b *Bot) handleNick(c tele.Context) error {
 		}
 	}
 
-	// Update invitation message if exists (regardless of user ID - can match by username)
+	// Update invitation and done messages if an active poll exists
 	if p, err := b.pollService.GetActivePoll(c.Chat().ID); err == nil {
 		b.UpdateInvitationMessage(p, nil)
+		b.UpdateDoneMessage(p, config)
 	} else if !errors.Is(err, poll.ErrNoActivePoll) {
-		b.logger.Warn("failed to get poll for invitation refresh", "error", err)
+		b.logger.Warn("failed to get poll for message refresh", "error", err)
 	}
 
 	// Send confirmation
