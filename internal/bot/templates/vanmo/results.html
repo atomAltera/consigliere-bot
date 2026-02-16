@@ -1,0 +1,30 @@
+📊 <b>Результаты голосования</b>
+{{.EventDate | ruDate}}
+{{- if .At19}}
+
+<b>🕖 19:00 ({{len .At19}}):</b>
+{{- range .At19}}
+{{. | formatResultsVoter}}
+{{- end}}
+{{- end}}
+{{- if .At20}}
+
+<b>🕗 20:00 ({{len .At20}}):</b>
+{{- range .At20}}
+{{. | formatResultsVoter}}
+{{- end}}
+{{- end}}
+{{- if .ComingLater}}
+
+<b>🕘 21:00+ ({{len .ComingLater}}):</b>
+{{- range .ComingLater}}
+{{. | formatResultsVoter}}
+{{- end}}
+{{- end}}
+{{- if .Undecided}}
+
+<b>🤔 Думают ({{len .Undecided}}):</b>
+{{- range .Undecided}}
+{{. | formatResultsVoter}}
+{{- end}}
+{{- end}}

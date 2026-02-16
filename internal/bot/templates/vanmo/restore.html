@@ -1,0 +1,5 @@
+✅ {{ .EventDate | ruDate }} — игры все таки состоится!
+{{- if .Members }}
+
+{{ .Members | formatMentions }}
+{{- end }}
