@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"slices"
 	"html/template"
 	"time"
 
@@ -112,10 +113,8 @@ func (b *Bot) ClubAdminOnly() tele.MiddlewareFunc {
 			config := getClubConfig(c)
 			userID := c.Sender().ID
 
-			for _, adminID := range config.Admins {
-				if adminID == userID {
-					return next(c)
-				}
+			if slices.Contains(config.Admins, userID) {
+				return next(c)
 			}
 
 			b.logger.Warn("unauthorized command attempt",
